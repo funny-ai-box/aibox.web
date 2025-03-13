@@ -4,7 +4,8 @@ import { Navigate } from 'react-router-dom';
 // 导入路由组件
 import { ProtectedRoute, PublicRoute } from './index';
 import AuthPage from '../pages/Auth/AuthPage';
-import AppHome from '../components/AppHome'; // 假设我们会将AppHome提取为独立组件
+import AppHome from '../components/AppHome';
+import DocumentDetail from '../apps/PersonalKnowledgeBase/DocumentDetail'; // 新增文档详情页
 
 // 导入所有应用组件
 import PersonalKnowledgeBase from '../apps/PersonalKnowledgeBase';
@@ -44,6 +45,15 @@ export const appRoutes = [
     path: "/knowledge-base",
     component: PersonalKnowledgeBase,
     description: "个人知识管理系统"
+  },
+  // 新增文档详情路由
+  {
+    id: 1.1, // 使用小数点来表示它是知识库的子路由
+    title: "文档详情",
+    path: "/knowledge-base/document/:documentId",
+    component: DocumentDetail,
+    description: "文档详细信息",
+    hideInMenu: true // 在菜单中隐藏
   },
   { id: 2, title: "待开发1", path: "/app1", component: App1, description: "功能正在开发中" },
   { id: 3, title: "待开发2", path: "/app2", component: App2, description: "功能正在开发中" },

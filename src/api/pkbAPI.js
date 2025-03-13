@@ -61,7 +61,7 @@ const pkbAPI = {
    * @returns {Promise} - 请求Promise
    */
   getDocumentDetail: (documentId) => {
-    return http.post('/pkb/documents/dtl', { DocumentId: documentId });
+    return http.post('/pkb/documents/dtl', { Id: documentId });
   },
   
   /**

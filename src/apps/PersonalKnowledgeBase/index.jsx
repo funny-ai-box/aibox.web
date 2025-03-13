@@ -4,28 +4,21 @@ import {
   Button, 
   Input, 
   Card, 
-  Tabs, 
   Typography, 
   Space, 
   Tag, 
-  Alert,
   Divider,
   List,
-  Flex,
-  Upload,
   Modal,
-  Form,
-  Select,
-  message,
+  Upload,
+  Spin,
   Empty,
-  Spin
+  message
 } from 'antd';
 import { 
-  FolderOutlined, 
-  UploadOutlined, 
-  LinkOutlined, 
-  SearchOutlined, 
   FileTextOutlined, 
+  UploadOutlined, 
+  SearchOutlined, 
   MessageOutlined, 
   NodeIndexOutlined, 
   DeleteOutlined,
@@ -34,12 +27,11 @@ import {
   UserOutlined,
   LoadingOutlined
 } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Bubble, Sender } from '@ant-design/x';
 import pkbAPI from '../../api/pkbAPI';
 
 const { Header, Sider, Content } = Layout;
-const { TabPane } = Tabs;
 const { Title, Text, Paragraph } = Typography;
 const { Search } = Input;
 
@@ -48,8 +40,7 @@ const KnowledgeBase = () => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploadLoading, setUploadLoading] = useState(false);
-  const [documentDetail, setDocumentDetail] = useState(null);
-  const [showDetailModal, setShowDetailModal] = useState(false);
+  const navigate = useNavigate(); // 添加useNavigate钩子
   
   // 聊天状态
   const [chatSessions, setChatSessions] = useState([]);
@@ -57,7 +48,6 @@ const KnowledgeBase = () => {
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('documents');
   const chatContainerRef = useRef(null);
   
   // 查询条件
@@ -140,8 +130,6 @@ const KnowledgeBase = () => {
       if (response.code === 200) {
         const newSessionId = response.data;
         message.success('创建聊天会话成功');
-        // 自动切换到聊天标签页
-        setActiveTab('chat');
         // 更新当前会话并清空聊天记录
         setChatMessages([]);
         // 获取最新会话列表，选中新创建的会话
@@ -301,23 +289,9 @@ const KnowledgeBase = () => {
   };
 
   // 查看文档详情
-  const viewDocumentDetail = async (documentId) => {
-    try {
-      setLoading(true);
-      const response = await pkbAPI.getDocumentDetail(documentId);
-      
-      if (response.code === 200) {
-        setDocumentDetail(response.data);
-        setShowDetailModal(true);
-      } else {
-        message.error(response.message || '获取详情失败');
-      }
-    } catch (error) {
-      message.error('获取文档详情失败');
-      console.error('获取文档详情失败:', error);
-    } finally {
-      setLoading(false);
-    }
+  const viewDocumentDetail = (documentId) => {
+    // 使用React Router的导航方法跳转到文档详情页面
+    navigate(`/knowledge-base/document/${documentId}`);
   };
 
   // 切换聊天会话
@@ -327,12 +301,7 @@ const KnowledgeBase = () => {
     fetchChatHistory(session.id);
   };
 
-  // 搜索文档
-  const searchDocuments = (keyword) => {
-    setSearchKeyword(keyword);
-    // 简单前端搜索，实际应该调用搜索API
-    // 当前实现为前端过滤
-  };
+
 
   // 过滤后的文档列表
   const filteredDocuments = searchKeyword
@@ -379,254 +348,214 @@ const KnowledgeBase = () => {
   return (
     <Layout style={{ height: 'calc(100vh - 30px)'  }}>
       <Header style={{ background: '#fff', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Title level={3} style={{ margin: 0 }}>个人知识库</Title>
-        <Link to="/">
-          <Button type="primary" icon={<HomeOutlined />}>
-            返回首页
-          </Button>
-        </Link>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <Link to="/">
+            <Button type="primary" shape="circle" icon={<HomeOutlined />} style={{ marginRight: '16px' }} />
+          </Link>
+          <Title level={3} style={{ margin: 0 }}>个人知识库</Title>
+        </div>
       </Header>
-      <Layout>
-        {/* 主内容区 */}
-        <Content style={{ padding: '20px', borderRadius: '8px' }}>
-          {/* 搜索栏 */}
-          <Search
-            placeholder="输入关键词进行搜索..."
-            allowClear
-            enterButton="搜索"
-            size="large"
-            onSearch={searchDocuments}
-            style={{ marginBottom: '20px' }}
-            prefix={<SearchOutlined />}
-          />
-
-          {/* 功能标签页 */}
-          <Tabs activeKey={activeTab} onChange={setActiveTab}>
-            <TabPane tab={<span><FileTextOutlined />文档库</span>} key="documents">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <Text style={{ fontSize: '16px', fontWeight: 'bold' }}>我的文档</Text>
+      
+      <Layout style={{ padding: '20px', background: '#fff', height: 'calc(100vh - 94px)' }}>
+        {/* 左侧文档列表区域 */}
+        <Content style={{ width: '60%', paddingRight: '20px', overflowY: 'auto' }}>
+     
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <Text style={{ fontSize: '16px', fontWeight: 'bold' }}>我的文档</Text>
+            <Upload {...uploadProps}>
+              <Button 
+                type="primary" 
+                icon={<UploadOutlined />}
+                loading={uploadLoading}
+              >
+                上传文档
+              </Button>
+            </Upload>
+          </div>
+          
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '40px 0' }}>
+              <Spin size="large" />
+            </div>
+          ) : filteredDocuments.length === 0 ? (
+            <Card style={{ borderStyle: 'dashed', background: '#fafafa' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0' }}>
+                <FileTextOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+                <Text type="secondary" style={{ marginBottom: '16px' }}>暂无文档</Text>
                 <Upload {...uploadProps}>
-                  <Button 
-                    type="primary" 
-                    icon={<UploadOutlined />}
-                    loading={uploadLoading}
-                  >
+                  <Button type="primary" icon={<UploadOutlined />}>
                     上传文档
                   </Button>
                 </Upload>
               </div>
-              
-              {loading ? (
-                <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                  <Spin size="large" />
-                </div>
-              ) : filteredDocuments.length === 0 ? (
-                <Card style={{ borderStyle: 'dashed', background: '#fafafa' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0' }}>
-                    <FileTextOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
-                    <Text type="secondary" style={{ marginBottom: '16px' }}>暂无文档</Text>
-                    <Upload {...uploadProps}>
-                      <Button type="primary" icon={<UploadOutlined />}>
-                        上传文档
-                      </Button>
-                    </Upload>
-                  </div>
-                </Card>
-              ) : (
-                <Space direction="vertical" style={{ width: '100%' }}>
-                  {filteredDocuments.map(doc => (
-                    <Card 
-                      key={doc.id} 
-                      hoverable
-                      bodyStyle={{ padding: '16px' }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <div>
-                          <Space>
-                            {getDocumentIcon(doc.type, doc.status)}
-                            <Text strong>{doc.title}</Text>
-                            {formatDocumentStatus(doc.status)}
-                          </Space>
-                          <div style={{ marginTop: '8px' }}>
-                            <Space>
-                              <Text type="secondary">上传于 {new Date(doc.createDate).toLocaleDateString()}</Text>
-                            </Space>
-                          </div>
-                        </div>
+            </Card>
+          ) : (
+            <Space direction="vertical" style={{ width: '100%' }}>
+              {filteredDocuments.map(doc => (
+                <Card 
+                  key={doc.id} 
+                  hoverable
+                  bodyStyle={{ padding: '16px' }}
+                  onClick={() => viewDocumentDetail(doc.id)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div>
+                      <Space>
+                        {getDocumentIcon(doc.type, doc.status)}
+                        <Text strong>{doc.title}</Text>
+                        {formatDocumentStatus(doc.status)}
+                      </Space>
+                      <div style={{ marginTop: '8px' }}>
                         <Space>
-                          <Button 
-                            type="text" 
-                            icon={<MessageOutlined />} 
-                            onClick={() => {
-                              createChatSession();
-                              // 实际应该关联文档
-                            }}
-                          />
-                          <Button 
-                            type="text" 
-                            icon={<NodeIndexOutlined />} 
-                            onClick={() => viewDocumentDetail(doc.id)}
-                            disabled={doc.status !== 'done'}
-                          />
-                          <Button 
-                            type="text" 
-                            danger
-                            icon={<DeleteOutlined />} 
-                            onClick={() => deleteDocument(doc.id)}
-                          />
+                          <Text type="secondary">上传于 {new Date(doc.createDate).toLocaleDateString()}</Text>
                         </Space>
                       </div>
-                    </Card>
-                  ))}
-                </Space>
-              )}
-            </TabPane>
-            <TabPane tab={<span><NodeIndexOutlined />知识图谱</span>} key="knowledge-graph">
-              <Card style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ textAlign: 'center', color: '#888' }}>
-                  {documentDetail ? (
-                    <div>
-                      <Title level={4}>{documentDetail.title}</Title>
-                      <Paragraph>{documentDetail.summary}</Paragraph>
-                      {/* 这里应该渲染知识图谱，可以使用Echarts或其他图形库 */}
                     </div>
-                  ) : (
-                    <Empty description="请在文档库中选择一个文档查看知识图谱" />
-                  )}
+                    <Space>
+                      <Button 
+                        type="text" 
+                        icon={<MessageOutlined />} 
+                        onClick={(e) => {
+                          e.stopPropagation(); // 阻止事件冒泡
+                          createChatSession();
+                          // 实际应该关联文档
+                        }}
+                      />
+                      <Button 
+                        type="text" 
+                        icon={<NodeIndexOutlined />} 
+                        onClick={(e) => {
+                          e.stopPropagation(); // 阻止事件冒泡
+                          viewDocumentDetail(doc.id);
+                        }}
+                        disabled={doc.status !== 'done'}
+                      />
+                      <Button 
+                        type="text" 
+                        danger
+                        icon={<DeleteOutlined />} 
+                        onClick={(e) => {
+                          e.stopPropagation(); // 阻止事件冒泡
+                          deleteDocument(doc.id);
+                        }}
+                      />
+                    </Space>
+                  </div>
+                </Card>
+              ))}
+            </Space>
+          )}
+        </Content>
+        
+        {/* 右侧聊天区域 */}
+        <Sider width="40%" style={{ background: '#f5f7fa', height: '100%', overflowY: 'hidden', borderLeft: '1px solid #e8e8e8' }}>
+          <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid #e8e8e8', fontWeight: 'bold', fontSize: '16px', background: '#fff' }}>智能对话</div>
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: 'calc(100% - 45px)' }}>
+              {chatSessions.length === 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0' }}>
+                  <MessageOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+                  <Text type="secondary" style={{ marginBottom: '16px' }}>暂无对话</Text>
+                  <Button 
+                    type="primary" 
+                    icon={<PlusOutlined />}
+                    onClick={createChatSession}
+                  >
+                    新建对话
+                  </Button>
                 </div>
-              </Card>
-            </TabPane>
-            <TabPane tab={<span><MessageOutlined />智能对话</span>} key="chat">
-              <Card style={{ height: 'calc(100vh - 220px)' }}>
-                {chatSessions.length === 0 ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0' }}>
-                    <MessageOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
-                    <Text type="secondary" style={{ marginBottom: '16px' }}>暂无对话</Text>
+              ) : (
+                <div style={{ display: 'flex', height: '100%', flex: 1, overflow: 'hidden' }}>
+                  {/* 聊天会话列表 */}
+                  <div style={{ width: '220px', borderRight: '1px solid #e8e8e8', padding: '0 10px', overflowY: 'auto', height: '100%', background: '#fff' }}>
                     <Button 
                       type="primary" 
-                      icon={<PlusOutlined />}
+                      icon={<PlusOutlined />} 
+                      style={{ marginBottom: '10px', width: '100%' }}
                       onClick={createChatSession}
                     >
                       新建对话
                     </Button>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', height: '100%' }}>
-                    {/* 聊天会话列表 */}
-                    <div style={{ width: '200px', borderRight: '1px solid #f0f0f0', padding: '10px', overflowY: 'auto' }}>
-                      <Button 
-                        type="primary" 
-                        icon={<PlusOutlined />} 
-                        style={{ marginBottom: '10px', width: '100%' }}
-                        onClick={createChatSession}
-                      >
-                        新建对话
-                      </Button>
-                      <List
-                        itemLayout="horizontal"
-                        dataSource={chatSessions}
-                        renderItem={session => (
-                          <List.Item 
-                            onClick={() => switchChatSession(session)}
-                            style={{ 
-                              cursor: 'pointer', 
-                              backgroundColor: currentSession && currentSession.id === session.id ? '#f5f5f5' : 'transparent',
-                              padding: '8px 12px',
-                              borderRadius: '4px'
-                            }}
-                          >
-                            <List.Item.Meta
-                              avatar={<MessageOutlined />}
-                              title={session.name}
-                              description={new Date(session.updateDate).toLocaleDateString()}
-                            />
-                          </List.Item>
-                        )}
-                      />
-                    </div>
-                    
-                    {/* 聊天内容区 */}
-                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '10px' }}>
-                      {currentSession ? (
-                        <>
-                          <div style={{ marginBottom: '10px' }}>
-                            <Text strong>{currentSession.name}</Text>
-                          </div>
-                          
-                          {/* 聊天消息区 */}
-                          <div 
-                            ref={chatContainerRef}
-                            style={{ 
-                              flex: 1, 
-                              overflowY: 'auto', 
-                              padding: '10px',
-                              backgroundColor: '#f9f9f9',
-                              borderRadius: '8px'
-                            }}
-                          >
-                            <Bubble.List
-                              roles={chatRoles}
-                              items={chatMessages.map(({ id, role, content }) => ({
-                                key: id,
-                                role: role === 'user' ? 'user' : 'assistant',
-                                content,
-                              }))}
-                            />
-                          </div>
-                          
-                          {/* 聊天输入区 */}
-                          <div style={{ marginTop: '10px' }}>
-                            <Sender
-                              loading={chatLoading}
-                              value={chatInput}
-                              onChange={setChatInput}
-                              onSend={sendChatMessage}
-                              placeholder="输入问题，按回车发送..."
-                            />
-                          </div>
-                        </>
-                      ) : (
-                        <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Empty description="请选择或创建一个对话会话" />
-                        </div>
+                    <List
+                      itemLayout="horizontal"
+                      dataSource={chatSessions}
+                      renderItem={session => (
+                        <List.Item 
+                          onClick={() => switchChatSession(session)}
+                          style={{ 
+                            cursor: 'pointer', 
+                            backgroundColor: currentSession && currentSession.id === session.id ? '#f5f5f5' : 'transparent',
+                            padding: '8px',
+                            borderRadius: '4px',
+                            marginBottom: '4px'
+                          }}
+                        >
+                          <List.Item.Meta
+                            avatar={<MessageOutlined />}
+                            title={<div style={{ fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.name}</div>}
+                          />
+                        </List.Item>
                       )}
-                    </div>
+                    />
                   </div>
-                )}
-              </Card>
-            </TabPane>
-          </Tabs>
-        </Content>
-      </Layout>
-
-      {/* 文档详情弹窗 */}
-      <Modal
-        title="文档详情"
-        open={showDetailModal}
-        onCancel={() => setShowDetailModal(false)}
-        footer={null}
-        width={800}
-      >
-        {documentDetail ? (
-          <div>
-            <Title level={4}>{documentDetail.title}</Title>
-            <Divider />
-            <Title level={5}>文档摘要</Title>
-            <Paragraph>{documentDetail.summary}</Paragraph>
-            <Divider />
-            <Title level={5}>知识图谱</Title>
-            <div style={{ height: '300px', backgroundColor: '#f9f9f9', padding: '20px', borderRadius: '8px' }}>
-              {/* 这里应该渲染知识图谱，可以使用Echarts或其他图形库 */}
-              <Empty description="知识图谱展示区" />
+                  
+                  {/* 聊天内容区 */}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0 16px', height: '100%', overflow: 'hidden' }}>
+                    {currentSession ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                        <div style={{ padding: '10px 0' }}>
+                          <Text strong>{currentSession.name}</Text>
+                        </div>
+                        
+                        {/* 聊天消息区 */}
+                        <div 
+                          ref={chatContainerRef}
+                          style={{ 
+                            flex: 1, 
+                            overflowY: 'auto', 
+                            padding: '16px',
+                            backgroundColor: '#f9f9f9',
+                            borderRadius: '8px',
+                            marginBottom: '10px'
+                          }}
+                        >
+                          <Bubble.List
+                            roles={chatRoles}
+                            items={chatMessages.map(({ id, role, content }) => ({
+                              key: id,
+                              role: role === 'user' ? 'user' : 'assistant',
+                              content,
+                            }))}
+                          />
+                        </div>
+                        
+                        {/* 聊天输入区 - 放置在底部 */}
+                        <div style={{ padding: '0 0 0 0', marginTop: 'auto' }}>
+                          <Sender
+                            loading={chatLoading}
+                            value={chatInput}
+                            onChange={setChatInput}
+                            onSubmit={sendChatMessage}
+                            placeholder="输入问题，按回车发送..."
+                            submitType="enter"
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Empty description="请选择或创建一个对话会话" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '20px' }}>
-            <Spin />
-            <div style={{ marginTop: '10px' }}>加载中...</div>
-          </div>
-        )}
-      </Modal>
+        </Sider>
+      </Layout>
+
+
     </Layout>
   );
 };
