@@ -11,7 +11,11 @@ import {
   Alert,
   Divider,
   List,
-  Flex
+  Flex,
+  Upload,
+  Modal,
+  Form,
+  Select
 } from 'antd';
 import { 
   FolderOutlined, 
@@ -33,16 +37,11 @@ const { Header, Sider, Content } = Layout;
 const { TabPane } = Tabs;
 const { Title, Text } = Typography;
 const { Search } = Input;
+const { Option } = Select;
 
 const KnowledgeBase = () => {
-  const [selectedFolder, setSelectedFolder] = useState('all');
-  
-  const folders = [
-    { id: 'all', name: '全部文档', count: 24 },
-    { id: 'work', name: '工作文档', count: 12 },
-    { id: 'tech', name: '技术资料', count: 8 },
-    { id: 'article', name: '收藏文章', count: 4 }
-  ];
+  // Upload state
+  const [fileList, setFileList] = useState([]);
 
   const documents = [
     { 
@@ -124,55 +123,42 @@ const KnowledgeBase = () => {
   // Chat input state
   const [chatInput, setChatInput] = useState('');
 
+  // Direct upload function
+  const handleUpload = (file) => {
+    // Mock processing the file
+    console.log('Processing file:', file.name);
+    
+    // Add the file to documents (in a real app, you would send to backend)
+    const fileExtension = file.name.split('.').pop().toLowerCase();
+    let fileType = 'text';
+    
+    if (fileExtension === 'pdf') {
+      fileType = 'pdf';
+    } else if (fileExtension === 'docx' || fileExtension === 'doc') {
+      fileType = 'word';
+    }
+    
+    // In a real application, you would upload the file to the server here
+    // and then add the document to your list after receiving confirmation
+    console.log(`Uploaded ${fileType} file: ${file.name}`);
+    
+    // Prevent default upload behavior
+    return false;
+  };
+  
+  const uploadProps = {
+    name: 'file',
+    showUploadList: false,
+    accept: '.txt,.pdf,.docx,.doc',
+    beforeUpload: handleUpload,
+  };
+
   return (
     <Layout style={{ height: 'calc(100vh - 30px)'  }}>
       <Header style={{ background: '#fff', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <Title level={3} style={{ margin: 0 }}>个人知识库</Title>
       </Header>
       <Layout>
-        {/* 左侧导航 */}
-        <Sider width={240} theme="light" style={{ padding: '16px' }}>
-          {/* 导入按钮组 */}
-          <Space direction="vertical" style={{ width: '100%', marginBottom: '24px' }}>
-            <Button icon={<UploadOutlined />} type="primary" block>导入文档</Button>
-            <Button icon={<LinkOutlined />} block>导入链接</Button>
-          </Space>
-
-          <Divider style={{ margin: '12px 0' }} />
-
-          {/* 文件夹列表 */}
-          <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text strong>文件夹</Text>
-            <Button type="text" icon={<PlusOutlined />} size="small" />
-          </div>
-
-          <List
-            size="small"
-            dataSource={folders}
-            renderItem={folder => (
-              <List.Item 
-                style={{ 
-                  padding: '8px 12px', 
-                  cursor: 'pointer',
-                  backgroundColor: selectedFolder === folder.id ? '#f0f0f0' : 'transparent',
-                  borderRadius: '4px'
-                }}
-                onClick={() => setSelectedFolder(folder.id)}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                  <Space>
-                    <FolderOutlined />
-                    <Text>{folder.name}</Text>
-                  </Space>
-                  <Text type="secondary">{folder.count}</Text>
-                </div>
-              </List.Item>
-            )}
-          />
-        </Sider>
-
-   
-
         {/* 主内容区 */}
         <Content style={{ padding: '20px', borderRadius: '8px' }}>
           {/* 搜索栏 */}
@@ -185,39 +171,65 @@ const KnowledgeBase = () => {
           {/* 功能标签页 */}
           <Tabs defaultActiveKey="documents">
             <TabPane tab="文档库" key="documents">
-              <Space direction="vertical" style={{ width: '100%' }}>
-                {documents.map(doc => (
-                  <Card 
-                    key={doc.id} 
-                    hoverable
-                    bodyStyle={{ padding: '16px' }}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <Text style={{ fontSize: '16px', fontWeight: 'bold' }}>我的文档</Text>
+                <Upload {...uploadProps}>
+                  <Button 
+                    type="primary" 
+                    icon={<UploadOutlined />}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <div>
-                        <Space>
-                          <FileTextOutlined style={{ color: '#1890ff' }} />
-                          <Text strong>{doc.title}</Text>
-                        </Space>
-                        <div style={{ marginTop: '8px' }}>
+                    上传文档
+                  </Button>
+                </Upload>
+              </div>
+              
+              {documents.length === 0 ? (
+                <Card style={{ borderStyle: 'dashed', background: '#fafafa' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0' }}>
+                    <FileTextOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+                    <Text type="secondary" style={{ marginBottom: '16px' }}>暂无文档</Text>
+                    <Upload {...uploadProps}>
+                      <Button type="primary" icon={<UploadOutlined />}>
+                        上传文档
+                      </Button>
+                    </Upload>
+                  </div>
+                </Card>
+              ) : (
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  {documents.map(doc => (
+                    <Card 
+                      key={doc.id} 
+                      hoverable
+                      bodyStyle={{ padding: '16px' }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <div>
                           <Space>
-                            <Text type="secondary">更新于 {doc.date}</Text>
-                            <Space>
-                              {doc.keywords.map(keyword => (
-                                <Tag color="blue" key={keyword}>{keyword}</Tag>
-                              ))}
-                            </Space>
+                            <FileTextOutlined style={{ color: '#1890ff' }} />
+                            <Text strong>{doc.title}</Text>
                           </Space>
+                          <div style={{ marginTop: '8px' }}>
+                            <Space>
+                              <Text type="secondary">更新于 {doc.date}</Text>
+                              <Space>
+                                {doc.keywords.map(keyword => (
+                                  <Tag color="blue" key={keyword}>{keyword}</Tag>
+                                ))}
+                              </Space>
+                            </Space>
+                          </div>
                         </div>
+                        <Space>
+                          <Button type="text" icon={<MessageOutlined />} />
+                          <Button type="text" icon={<NodeIndexOutlined />} />
+                          <Button type="text" icon={<KeyOutlined />} />
+                        </Space>
                       </div>
-                      <Space>
-                        <Button type="text" icon={<MessageOutlined />} />
-                        <Button type="text" icon={<NodeIndexOutlined />} />
-                        <Button type="text" icon={<KeyOutlined />} />
-                      </Space>
-                    </div>
-                  </Card>
-                ))}
-              </Space>
+                    </Card>
+                  ))}
+                </Space>
+              )}
             </TabPane>
             <TabPane tab="知识图谱" key="knowledge-graph">
               <Card style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -272,6 +284,8 @@ const KnowledgeBase = () => {
           </Flex>
         </Sider>
       </Layout>
+
+
     </Layout>
   );
 };
