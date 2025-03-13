@@ -1,5 +1,6 @@
 import { message } from 'antd';
 
+// 修改API基础URL为接口文档中提供的地址
 const BASE_URL = 'http://106.75.71.65:57460/api';
 
 // 获取存储的token
@@ -9,6 +10,11 @@ const getToken = () => {
     return JSON.parse(userInfo).accessToken;
   }
   return null;
+};
+
+// 获取基础URL
+const getBaseUrl = () => {
+  return BASE_URL;
 };
 
 // 清除用户信息并跳转到登录页
@@ -97,6 +103,12 @@ const http = {
       method: 'DELETE',
     });
   },
+
+  // 获取基础URL，用于构建完整的请求地址
+  getBaseUrl,
+  
+  // 获取Token，用于直接访问
+  getToken
 };
 
 // 用户相关API
