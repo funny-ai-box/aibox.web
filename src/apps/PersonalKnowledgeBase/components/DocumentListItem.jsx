@@ -1,11 +1,16 @@
 import React from 'react';
-import { Card, Space, Button, Typography } from 'antd';
+import { Card, Space, Button, Typography, Tag, Tooltip, Avatar } from 'antd';
 import { 
   FileTextOutlined, 
   LoadingOutlined, 
   CloseCircleOutlined, 
   MessageOutlined, 
-  DeleteOutlined 
+  DeleteOutlined,
+  EyeOutlined,
+  FileOutlined,
+  FilePdfOutlined,
+  FileWordOutlined,
+  FileUnknownOutlined
 } from '@ant-design/icons';
 
 const { Text } = Typography;
@@ -18,28 +23,47 @@ const DocumentListItem = ({ document, onView, onDelete, onCreateChat }) => {
       case 0:
         return {
           icon: <FileTextOutlined style={{ color: '#bfbfbf' }} />,
-          tag: <span style={{ color: '#bfbfbf', backgroundColor: '#f5f5f5', padding: '2px 8px', borderRadius: '2px', fontSize: '12px' }}>待处理</span>
+          tag: <Tag color="default">待处理</Tag>
         };
       case 1:
         return {
           icon: <LoadingOutlined style={{ color: '#1890ff' }} />,
-          tag: <span style={{ color: '#1890ff', backgroundColor: '#e6f7ff', padding: '2px 8px', borderRadius: '2px', fontSize: '12px' }}>处理中</span>
+          tag: <Tag color="processing">处理中</Tag>
         };
       case 2:
         return {
           icon: <FileTextOutlined style={{ color: '#52c41a' }} />,
-          tag: <span style={{ color: '#52c41a', backgroundColor: '#f6ffed', padding: '2px 8px', borderRadius: '2px', fontSize: '12px' }}>已完成</span>
+          tag: <Tag color="success">已完成</Tag>
         };
       case 3:
         return {
           icon: <CloseCircleOutlined style={{ color: '#f5222d' }} />,
-          tag: <span style={{ color: '#f5222d', backgroundColor: '#fff1f0', padding: '2px 8px', borderRadius: '2px', fontSize: '12px' }}>处理失败</span>
+          tag: <Tag color="error">处理失败</Tag>
         };
       default:
         return {
           icon: <FileTextOutlined style={{ color: '#bfbfbf' }} />,
-          tag: <span style={{ color: '#bfbfbf', backgroundColor: '#f5f5f5', padding: '2px 8px', borderRadius: '2px', fontSize: '12px' }}>未知状态</span>
+          tag: <Tag color="default">未知状态</Tag>
         };
+    }
+  };
+
+  // 获取文件类型图标
+  const getFileTypeIcon = (fileName) => {
+    if (!fileName) return <FileOutlined />;
+    
+    const extension = fileName.split('.').pop().toLowerCase();
+    
+    switch (extension) {
+      case 'pdf':
+        return <FilePdfOutlined style={{ color: '#ff4d4f' }} />;
+      case 'doc':
+      case 'docx':
+        return <FileWordOutlined style={{ color: '#1890ff' }} />;
+      case 'txt':
+        return <FileTextOutlined style={{ color: '#52c41a' }} />;
+      default:
+        return <FileUnknownOutlined />;
     }
   };
 
@@ -63,7 +87,7 @@ const DocumentListItem = ({ document, onView, onDelete, onCreateChat }) => {
 
   const { icon, tag } = getStatusDisplay(document.status);
   
-  // 处理卡片点击 - 修正了这里的问题
+  // 处理卡片点击
   const handleCardClick = () => {
     onView(document.id);
   };
@@ -75,54 +99,76 @@ const DocumentListItem = ({ document, onView, onDelete, onCreateChat }) => {
       onClick={handleCardClick}
       style={{ cursor: 'pointer', marginBottom: '16px' }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-        <div>
-          <Space align="start">
-            {icon}
-            <div>
-              <Space align="center">
-                <Text strong>{document.title}</Text>
-                {tag}
-              </Space>
-              <div style={{ marginTop: '8px' }}>
-                <Space>
-                  <Text type="secondary">上传于 {formatDate(document.createDate)}</Text>
-                  <Text type="secondary">大小: {formatFileSize(document.fileSize)}</Text>
-                </Space>
-              </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+          <Avatar 
+            size={40} 
+            icon={getFileTypeIcon(document.title)} 
+            style={{ 
+              backgroundColor: '#f5f5f5', 
+              marginRight: '12px',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center'
+            }} 
+          />
+          
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+              <Text strong style={{ marginRight: '8px', fontSize: '16px' }}>{document.title}</Text>
+              {tag}
             </div>
-          </Space>
+            
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <Text type="secondary" style={{ fontSize: '12px', marginRight: '16px' }}>
+                上传于: {formatDate(document.createDate)}
+              </Text>
+              <Text type="secondary" style={{ fontSize: '12px' }}>
+                大小: {formatFileSize(document.fileSize)}
+              </Text>
+            </div>
+          </div>
         </div>
+        
         <Space>
-          <Button 
-            type="text" 
-            icon={<MessageOutlined />} 
-            onClick={(e) => {
-              e.stopPropagation(); // 阻止事件冒泡
-              onCreateChat(document.id, document.title);
-            }}
-            disabled={document.status !== 2}
-            title={document.status !== 2 ? "文档处理完成后才能开始对话" : "开始对话"}
-          />
-          <Button 
-            type="text" 
-            icon={<FileTextOutlined />} 
-            onClick={(e) => {
-              e.stopPropagation(); // 阻止事件冒泡
-              onView(document.id);  // 确保这里正确传递了文档ID
-            }}
-            title="查看文档详情"
-          />
-          <Button 
-            type="text" 
-            danger
-            icon={<DeleteOutlined />} 
-            onClick={(e) => {
-              e.stopPropagation(); // 阻止事件冒泡
-              onDelete(document.id);  // 确保这里正确传递了文档ID
-            }}
-            title="删除文档"
-          />
+          <Tooltip title={document.status !== 2 ? "文档处理完成后才能开始对话" : "开始对话"}>
+            <Button 
+              type="text" 
+              icon={<MessageOutlined />} 
+              onClick={(e) => {
+                e.stopPropagation(); // 阻止事件冒泡
+                if (document.status === 2) {
+                  onCreateChat(document.id, document.title);
+                }
+              }}
+              disabled={document.status !== 2}
+              style={{ color: document.status === 2 ? '#1890ff' : undefined }}
+            />
+          </Tooltip>
+          
+          <Tooltip title="查看文档详情">
+            <Button 
+              type="text" 
+              icon={<EyeOutlined />} 
+              onClick={(e) => {
+                e.stopPropagation(); // 阻止事件冒泡
+                onView(document.id);
+              }}
+              style={{ color: '#1890ff' }}
+            />
+          </Tooltip>
+          
+          <Tooltip title="删除文档">
+            <Button 
+              type="text" 
+              danger
+              icon={<DeleteOutlined />} 
+              onClick={(e) => {
+                e.stopPropagation(); // 阻止事件冒泡
+                onDelete(document.id);
+              }}
+            />
+          </Tooltip>
         </Space>
       </div>
     </Card>

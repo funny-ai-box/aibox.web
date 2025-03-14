@@ -23,6 +23,7 @@ import {
 } from '@ant-design/icons';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import pkbAPI from '../../api/pkbAPI';
+import ChatComponent from './components/ChatComponent';
 
 const { Header, Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
@@ -34,6 +35,8 @@ const DocumentDetail = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('summary');
   const [mindMapData, setMindMapData] = useState(null);
+  const [chatVisible, setChatVisible] = useState(false);
+  const [chatDrawerWidth, setChatDrawerWidth] = useState('500px');
 
   useEffect(() => {
     fetchDocumentDetail();
@@ -70,18 +73,8 @@ const DocumentDetail = () => {
     navigate('/knowledge-base');
   };
 
-  const createChat = async () => {
-    try {
-      const response = await pkbAPI.createChatSession(`关于 ${document?.title || '文档'} 的对话`);
-      
-      if (response.code === 200) {
-        message.success('创建聊天会话成功');
-        navigate('/knowledge-base');
-      }
-    } catch (error) {
-      message.error('创建聊天会话失败');
-      console.error('创建聊天会话失败:', error);
-    }
+  const startChat = () => {
+    setChatVisible(true);
   };
 
   const formatDocStatus = (status) => {
@@ -150,15 +143,15 @@ const DocumentDetail = () => {
               <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-               <link
-            type="text/css"
-            rel="stylesheet"
-            href="//cdn.jsdelivr.net/npm/jsmind@0.8.7/style/jsmind.css"
-        />
-        <script
-            type="text/javascript"
-            src="//cdn.jsdelivr.net/npm/jsmind@0.8.7/es6/jsmind.js"
-        ></script>
+                <link
+                  type="text/css"
+                  rel="stylesheet"
+                  href="//cdn.jsdelivr.net/npm/jsmind@0.8.7/style/jsmind.css"
+                />
+                <script
+                  type="text/javascript"
+                  src="//cdn.jsdelivr.net/npm/jsmind@0.8.7/es6/jsmind.js"
+                ></script>
                 <style>
                   body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; }
                   #jsmind_container { width: 100%; height: 100%; }
@@ -294,6 +287,18 @@ const DocumentDetail = () => {
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Content style={{ padding: '20px', background: '#f0f2f5' }}>
+        {/* 智能对话抽屉组件 */}
+        {document && (
+          <ChatComponent 
+            visible={chatVisible}
+            onClose={() => setChatVisible(false)}
+            documentId={documentId}
+            documentTitle={document.title || ''}
+            useDrawer={true}
+            width={chatDrawerWidth}
+          />
+        )}
+        
         <Card style={{ marginBottom: '16px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Breadcrumb items={[
@@ -345,7 +350,7 @@ const DocumentDetail = () => {
                 <Button 
                   type="primary" 
                   icon={<MessageOutlined />}
-                  onClick={createChat}
+                  onClick={startChat}
                   disabled={document.status !== 2}
                 >
                   开始对话

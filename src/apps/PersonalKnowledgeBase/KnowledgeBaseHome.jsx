@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Layout, 
   Button, 
@@ -6,43 +6,45 @@ import {
   Card, 
   Typography, 
   Space, 
-  List,
   Upload,
   Spin,
   Empty,
-  message
+  message,
+  Tabs,
+  Badge,
+  Avatar
 } from 'antd';
 import { 
   FileTextOutlined, 
   UploadOutlined, 
   MessageOutlined, 
   PlusOutlined,
-  UserOutlined,
-  DeleteOutlined
+  SearchOutlined,
+  AppstoreOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { Bubble, Sender } from '@ant-design/x';
 import pkbAPI from '../../api/pkbAPI';
 import DocumentListItem from './components/DocumentListItem';
+import ChatComponent from './components/ChatComponent';
 
-const { Sider, Content } = Layout;
-const { Text } = Typography;
+const { Content } = Layout;
+const { Title, Text } = Typography;
 const { Search } = Input;
+const { TabPane } = Tabs;
 
 const KnowledgeBaseHome = () => {
   // 文档状态
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploadLoading, setUploadLoading] = useState(false);
+  const [viewMode, setViewMode] = useState('list'); // 'list' 或 'grid'
+  const [activeTabKey, setActiveTabKey] = useState('all');
   const navigate = useNavigate();
   
   // 聊天状态
-  const [chatSessions, setChatSessions] = useState([]);
-  const [currentSession, setCurrentSession] = useState(null);
-  const [chatMessages, setChatMessages] = useState([]);
-  const [chatInput, setChatInput] = useState('');
-  const [chatLoading, setChatLoading] = useState(false);
-  const chatContainerRef = useRef(null);
+  const [chatVisible, setChatVisible] = useState(true);
+  const [selectedDocumentId, setSelectedDocumentId] = useState(null);
+  const [selectedDocumentTitle, setSelectedDocumentTitle] = useState('');
   
   // 查询条件
   const [searchKeyword, setSearchKeyword] = useState('');
@@ -50,15 +52,7 @@ const KnowledgeBaseHome = () => {
   // 初始化加载
   useEffect(() => {
     fetchDocuments();
-    fetchChatSessions();
   }, []);
-
-  // 滚动到聊天底部
-  useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-  }, [chatMessages]);
 
   // 获取文档列表
   const fetchDocuments = async () => {
@@ -73,173 +67,6 @@ const KnowledgeBaseHome = () => {
       console.error('获取文档列表失败:', error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  // 获取聊天会话列表
-  const fetchChatSessions = async () => {
-    try {
-      const response = await pkbAPI.getChatSessionsList();
-      if (response.code === 200) {
-        setChatSessions(response.data || []);
-        // 如果有聊天会话，默认选择第一个
-        if (response.data && response.data.length > 0) {
-          setCurrentSession(response.data[0]);
-          fetchChatHistory(response.data[0].id);
-        }
-      }
-    } catch (error) {
-      message.error('获取聊天会话失败');
-      console.error('获取聊天会话失败:', error);
-    }
-  };
-
-  // 获取聊天历史
-  const fetchChatHistory = async (sessionId, lastId = null) => {
-    try {
-      const response = await pkbAPI.getChatHistory(sessionId, 20, lastId);
-      
-      if (response.code === 200) {
-        // 新记录在前，旧记录在后，需要倒序
-        const messages = response.data.messages.reverse();
-        setChatMessages(prevMessages => {
-          // 若是加载更多（有lastId），则添加到已有消息前面
-          if (lastId) {
-            return [...messages, ...prevMessages];
-          }
-          return messages;
-        });
-      }
-    } catch (error) {
-      message.error('获取聊天历史失败');
-      console.error('获取聊天历史失败:', error);
-    }
-  };
-
-  // 创建新聊天会话
-  const createChatSession = async (documentId = null, documentTitle = '') => {
-    try {
-      let sessionName = '新对话';
-      if (documentTitle) {
-        sessionName = `关于 ${documentTitle} 的对话`;
-      }
-      
-      const response = await pkbAPI.createChatSession(sessionName);
-      
-      if (response.code === 200) {
-        const newSessionId = response.data;
-        message.success('创建聊天会话成功');
-        // 更新当前会话并清空聊天记录
-        setChatMessages([]);
-        // 获取最新会话列表，选中新创建的会话
-        const sessionRes = await pkbAPI.getChatSessionsList();
-        if (sessionRes.code === 200) {
-          const sessions = sessionRes.data || [];
-          const newSession = sessions.find(s => s.id === newSessionId);
-          if (newSession) {
-            setCurrentSession(newSession);
-          }
-          setChatSessions(sessions);
-        }
-      }
-    } catch (error) {
-      message.error('创建聊天会话失败');
-      console.error('创建聊天会话失败:', error);
-    }
-  };
-
-  // 发送聊天消息（使用流式接口）
-  const sendChatMessage = async () => {
-    if (!chatInput.trim() || !currentSession) return;
-    
-    // 添加用户消息到列表
-    const userMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: chatInput,
-      createDate: new Date().toISOString()
-    };
-    
-    setChatMessages(prev => [...prev, userMessage]);
-    setChatInput(''); // 清空输入框
-    setChatLoading(true);
-    
-    try {
-      // 构造一个临时的AI消息占位
-      const tempAiMessage = {
-        id: `temp-${Date.now()}`,
-        role: 'assistant',
-        content: '',
-        createDate: new Date().toISOString()
-      };
-      
-      setChatMessages(prev => [...prev, tempAiMessage]);
-      
-      // 使用流式接口
-      const response = await pkbAPI.sendChatMessage(currentSession.id, chatInput);
-      
-      // 读取流式响应
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let result = '';
-      
-      // 更新临时消息内容的函数
-      const updateTempMessage = (content) => {
-        setChatMessages(prevMessages => {
-          const newMessages = [...prevMessages];
-          const lastIndex = newMessages.length - 1;
-          if (lastIndex >= 0 && newMessages[lastIndex].id.startsWith('temp-')) {
-            newMessages[lastIndex] = { ...newMessages[lastIndex], content };
-          }
-          return newMessages;
-        });
-      };
-      
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split('\n\n').filter(line => line.trim());
-        
-        for (const line of lines) {
-          if (line.includes('event: chunk')) {
-            const dataLine = line.split('\n').find(l => l.startsWith('data: '));
-            if (dataLine) {
-              const data = dataLine.slice(6); // 去掉 'data: '
-              result += data;
-              updateTempMessage(result);
-            }
-          } else if (line.includes('event: done')) {
-            // 替换临时消息为正式消息
-            setChatMessages(prevMessages => {
-              const newMessages = [...prevMessages];
-              const lastMessage = { ...newMessages[newMessages.length - 1] };
-              
-              // 修改临时ID为正式ID
-              lastMessage.id = `formal-${Date.now()}`;
-              newMessages[newMessages.length - 1] = lastMessage;
-              
-              return newMessages;
-            });
-          } else if (line.includes('event: error')) {
-            message.error('消息发送失败');
-            // 移除临时消息
-            setChatMessages(prev => prev.filter(msg => !msg.id.startsWith('temp-')));
-          }
-        }
-      }
-      
-      // 完成后重新获取聊天历史以保持同步
-      await fetchChatHistory(currentSession.id);
-      
-    } catch (error) {
-      message.error('发送消息失败');
-      console.error('发送消息失败:', error);
-      // 移除临时消息
-      setChatMessages(prev => prev.filter(msg => !msg.id.startsWith('temp-')));
-    } finally {
-      setChatLoading(false);
     }
   };
 
@@ -289,23 +116,56 @@ const KnowledgeBaseHome = () => {
 
   // 查看文档详情
   const viewDocumentDetail = (documentId) => {
-    console.log('跳转到文档详情页，文档ID:', documentId);
-    // 使用React Router的导航方法跳转到文档详情页面
     navigate(`/knowledge-base/document/${documentId}`);
   };
 
-  // 切换聊天会话
-  const switchChatSession = (session) => {
-    setCurrentSession(session);
-    setChatMessages([]);
-    fetchChatHistory(session.id);
+  // 创建与文档相关的聊天
+  const createDocumentChat = (documentId, documentTitle) => {
+    setSelectedDocumentId(documentId);
+    setSelectedDocumentTitle(documentTitle);
   };
 
-  // 过滤后的文档列表
-  const filteredDocuments = searchKeyword
-    ? documents.filter(doc => 
-        doc.title.toLowerCase().includes(searchKeyword.toLowerCase()))
-    : documents;
+  // 处理标签切换
+  const handleTabChange = (key) => {
+    setActiveTabKey(key);
+  };
+
+  // 根据标签过滤文档
+  const getFilteredDocuments = () => {
+    let filtered = documents;
+    
+    // 先按标签过滤
+    if (activeTabKey === 'completed') {
+      filtered = filtered.filter(doc => doc.status === 2);
+    } else if (activeTabKey === 'processing') {
+      filtered = filtered.filter(doc => doc.status === 0 || doc.status === 1);
+    } else if (activeTabKey === 'failed') {
+      filtered = filtered.filter(doc => doc.status === 3);
+    }
+    
+    // 再按搜索关键词过滤
+    if (searchKeyword) {
+      filtered = filtered.filter(doc => 
+        doc.title.toLowerCase().includes(searchKeyword.toLowerCase())
+      );
+    }
+    
+    return filtered;
+  };
+
+  // 获取标签计数
+  const getTabCounts = () => {
+    const counts = {
+      all: documents.length,
+      completed: documents.filter(doc => doc.status === 2).length,
+      processing: documents.filter(doc => doc.status === 0 || doc.status === 1).length,
+      failed: documents.filter(doc => doc.status === 3).length
+    };
+    return counts;
+  };
+
+  const tabCounts = getTabCounts();
+  const filteredDocuments = getFilteredDocuments();
 
   // 上传组件属性配置
   const uploadProps = {
@@ -316,181 +176,240 @@ const KnowledgeBaseHome = () => {
     disabled: uploadLoading
   };
 
-  // 聊天气泡角色定义
-  const chatRoles = {
-    user: {
-      placement: 'end',
-      avatar: { icon: <UserOutlined />, style: { background: '#f0f0f0' } },
-    },
-    assistant: {
-      placement: 'start',
-      avatar: { icon: <MessageOutlined />, style: { background: '#1890ff', color: '#fff' } },
-    },
+  // 格式化文件大小
+  const formatFileSize = (size) => {
+    if (size < 1024) {
+      return `${size} B`;
+    } else if (size < 1024 * 1024) {
+      return `${(size / 1024).toFixed(2)} KB`;
+    } else {
+      return `${(size / (1024 * 1024)).toFixed(2)} MB`;
+    }
+  };
+
+  // 格式化日期
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+  };
+
+  // 根据状态获取图标和状态标签
+  const getStatusDisplay = (status) => {
+    switch (status) {
+      case 0:
+        return {
+          icon: <FileTextOutlined style={{ color: '#bfbfbf' }} />,
+          tag: <span style={{ color: '#bfbfbf', backgroundColor: '#f5f5f5', padding: '2px 8px', borderRadius: '4px', fontSize: '12px' }}>待处理</span>
+        };
+      case 1:
+        return {
+          icon: <Spin size="small" style={{ color: '#1890ff' }} />,
+          tag: <span style={{ color: '#1890ff', backgroundColor: '#e6f7ff', padding: '2px 8px', borderRadius: '4px', fontSize: '12px' }}>处理中</span>
+        };
+      case 2:
+        return {
+          icon: <FileTextOutlined style={{ color: '#52c41a' }} />,
+          tag: <span style={{ color: '#52c41a', backgroundColor: '#f6ffed', padding: '2px 8px', borderRadius: '4px', fontSize: '12px' }}>已完成</span>
+        };
+      case 3:
+        return {
+          icon: <FileTextOutlined style={{ color: '#f5222d' }} />,
+          tag: <span style={{ color: '#f5222d', backgroundColor: '#fff1f0', padding: '2px 8px', borderRadius: '4px', fontSize: '12px' }}>处理失败</span>
+        };
+      default:
+        return {
+          icon: <FileTextOutlined style={{ color: '#bfbfbf' }} />,
+          tag: <span style={{ color: '#bfbfbf', backgroundColor: '#f5f5f5', padding: '2px 8px', borderRadius: '4px', fontSize: '12px' }}>未知状态</span>
+        };
+    }
+  };
+
+  // Grid模式的文档卡片渲染
+  const renderDocumentGrid = () => {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '16px' }}>
+        {filteredDocuments.map(doc => {
+          const { icon, tag } = getStatusDisplay(doc.status);
+          return (
+            <Card 
+              key={doc.id}
+              hoverable
+              style={{ height: '100%' }}
+              onClick={() => viewDocumentDetail(doc.id)}
+              actions={[
+                <Button 
+                  type="text" 
+                  icon={<MessageOutlined />} 
+                  disabled={doc.status !== 2}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (doc.status === 2) {
+                      createDocumentChat(doc.id, doc.title);
+                    }
+                  }}
+                  title={doc.status !== 2 ? "文档处理完成后才能开始对话" : "开始对话"}
+                />,
+                <Button 
+                  type="text" 
+                  icon={<FileTextOutlined />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    viewDocumentDetail(doc.id);
+                  }}
+                  title="查看文档详情"
+                />,
+                <Button 
+                  type="text" 
+                  danger
+                  icon={<MessageOutlined />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteDocument(doc.id);
+                  }}
+                  title="删除文档"
+                />
+              ]}
+            >
+              <Card.Meta
+                avatar={icon}
+                title={
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Text ellipsis style={{ maxWidth: '160px' }} title={doc.title}>{doc.title}</Text>
+                    {tag}
+                  </div>
+                }
+                description={
+                  <div>
+                    <div>上传于: {formatDate(doc.createDate)}</div>
+                    <div>大小: {formatFileSize(doc.fileSize)}</div>
+                  </div>
+                }
+              />
+            </Card>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // 渲染文档列表内容
+  const renderDocumentContent = () => {
+    if (loading) {
+      return (
+        <div style={{ textAlign: 'center', padding: '40px 0' }}>
+          <Spin size="large" />
+        </div>
+      );
+    }
+    
+    if (filteredDocuments.length === 0) {
+      return (
+        <Card style={{ borderStyle: 'dashed', background: '#fafafa' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0' }}>
+            <FileTextOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+            <Text type="secondary" style={{ marginBottom: '16px' }}>
+              {searchKeyword 
+                ? '没有找到匹配的文档' 
+                : activeTabKey !== 'all' 
+                  ? `没有${activeTabKey === 'completed' ? '已完成' : activeTabKey === 'processing' ? '处理中' : '失败'}的文档` 
+                  : '暂无文档'}
+            </Text>
+            <Upload {...uploadProps}>
+              <Button type="primary" icon={<UploadOutlined />}>
+                上传文档
+              </Button>
+            </Upload>
+          </div>
+        </Card>
+      );
+    }
+    
+    return viewMode === 'grid' 
+      ? renderDocumentGrid()
+      : (
+        <Space direction="vertical" style={{ width: '100%' }}>
+          {filteredDocuments.map(doc => (
+            <DocumentListItem
+              key={doc.id}
+              document={doc}
+              onView={viewDocumentDetail}
+              onDelete={deleteDocument}
+              onCreateChat={(docId, docTitle) => createDocumentChat(docId, docTitle)}
+            />
+          ))}
+        </Space>
+      );
   };
 
   return (
     <Layout style={{ background: '#fff', height: 'calc(100vh - 104px)' }}>
       {/* 左侧文档列表区域 */}
-      <Content style={{ width: '60%', paddingRight: '20px', overflowY: 'auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <Text style={{ fontSize: '16px', fontWeight: 'bold' }}>我的文档</Text>
-          <Space>
-            <Search
-              placeholder="搜索文档"
-              allowClear
-              onChange={(e) => setSearchKeyword(e.target.value)}
-              style={{ width: 200 }}
-            />
-            <Upload {...uploadProps}>
-              <Button 
-                type="primary" 
-                icon={<UploadOutlined />}
-                loading={uploadLoading}
-              >
-                上传文档
-              </Button>
-            </Upload>
-          </Space>
-        </div>
-        
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <Spin size="large" />
-          </div>
-        ) : filteredDocuments.length === 0 ? (
-          <Card style={{ borderStyle: 'dashed', background: '#fafafa' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0' }}>
-              <FileTextOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
-              <Text type="secondary" style={{ marginBottom: '16px' }}>
-                {searchKeyword ? '没有找到匹配的文档' : '暂无文档'}
-              </Text>
-              <Upload {...uploadProps}>
-                <Button type="primary" icon={<UploadOutlined />}>
-                  上传文档
-                </Button>
-              </Upload>
-            </div>
-          </Card>
-        ) : (
-          <Space direction="vertical" style={{ width: '100%' }}>
-            {filteredDocuments.map(doc => (
-              <DocumentListItem
-                key={doc.id}
-                document={doc}
-                onView={viewDocumentDetail}
-                onDelete={deleteDocument}
-                onCreateChat={(docId, docTitle) => createChatSession(docId, docTitle)}
-              />
-            ))}
-          </Space>
-        )}
-      </Content>
-      
-      {/* 右侧聊天区域 */}
-      <Sider width="40%" style={{ background: '#f5f7fa', height: '100%', overflowY: 'hidden', borderLeft: '1px solid #e8e8e8' }}>
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid #e8e8e8', fontWeight: 'bold', fontSize: '16px', background: '#fff' }}>智能对话</div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: 'calc(100% - 45px)' }}>
-            {chatSessions.length === 0 ? (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0' }}>
-                <MessageOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
-                <Text type="secondary" style={{ marginBottom: '16px' }}>暂无对话</Text>
+      <Content style={{ width: chatVisible ? '60%' : '100%', paddingRight: chatVisible ? '20px' : '0', overflowY: 'auto' }}>
+        <Card>
+          <div style={{ marginBottom: '16px' }}>
+            <Title level={4} style={{ marginBottom: '16px' }}>我的文档</Title>
+            
+            <Tabs activeKey={activeTabKey} onChange={handleTabChange}>
+              <TabPane tab={<Badge count={tabCounts.all} offset={[10, 0]}>全部</Badge>} key="all" />
+              <TabPane tab={<Badge count={tabCounts.completed} offset={[10, 0]}>已完成</Badge>} key="completed" />
+              <TabPane tab={<Badge count={tabCounts.processing} offset={[10, 0]}>处理中</Badge>} key="processing" />
+              <TabPane tab={<Badge count={tabCounts.failed} offset={[10, 0]}>失败</Badge>} key="failed" />
+            </Tabs>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
+              <Space>
                 <Button 
-                  type="primary" 
-                  icon={<PlusOutlined />}
-                  onClick={() => createChatSession()}
+                  type={viewMode === 'list' ? 'primary' : 'default'} 
+                  icon={<AppstoreOutlined />} 
+                  onClick={() => setViewMode('list')}
                 >
-                  新建对话
+                  列表
                 </Button>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', height: '100%', flex: 1, overflow: 'hidden' }}>
-                {/* 聊天会话列表 */}
-                <div style={{ width: '220px', borderRight: '1px solid #e8e8e8', padding: '10px', overflowY: 'auto', height: '100%', background: '#fff' }}>
+                <Button 
+                  type={viewMode === 'grid' ? 'primary' : 'default'} 
+                  icon={<AppstoreOutlined />} 
+                  onClick={() => setViewMode('grid')}
+                >
+                  网格
+                </Button>
+              </Space>
+              
+              <Space>
+                <Search
+                  placeholder="搜索文档"
+                  allowClear
+                  onSearch={(value) => setSearchKeyword(value)}
+                  style={{ width: 220 }}
+                  prefix={<SearchOutlined />}
+                />
+                <Upload {...uploadProps}>
                   <Button 
                     type="primary" 
-                    icon={<PlusOutlined />} 
-                    style={{ marginBottom: '10px', width: '100%' }}
-                    onClick={() => createChatSession()}
+                    icon={<UploadOutlined />}
+                    loading={uploadLoading}
                   >
-                    新建对话
+                    上传文档
                   </Button>
-                  <List
-                    itemLayout="horizontal"
-                    dataSource={chatSessions}
-                    renderItem={session => (
-                      <List.Item 
-                        onClick={() => switchChatSession(session)}
-                        style={{ 
-                          cursor: 'pointer', 
-                          backgroundColor: currentSession && currentSession.id === session.id ? '#f5f5f5' : 'transparent',
-                          padding: '8px',
-                          borderRadius: '4px',
-                          marginBottom: '4px'
-                        }}
-                      >
-                        <List.Item.Meta
-                          avatar={<MessageOutlined />}
-                          title={<div style={{ fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.name}</div>}
-                        />
-                      </List.Item>
-                    )}
-                  />
-                </div>
-                
-                {/* 聊天内容区 */}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0 16px', height: '100%', overflow: 'hidden' }}>
-                  {currentSession ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                      <div style={{ padding: '10px 0' }}>
-                        <Text strong>{currentSession.name}</Text>
-                      </div>
-                      
-                      {/* 聊天消息区 */}
-                      <div 
-                        ref={chatContainerRef}
-                        style={{ 
-                          flex: 1, 
-                          overflowY: 'auto', 
-                          padding: '16px',
-                          backgroundColor: '#f9f9f9',
-                          borderRadius: '8px',
-                          marginBottom: '10px'
-                        }}
-                      >
-                        <Bubble.List
-                          roles={chatRoles}
-                          items={chatMessages.map(({ id, role, content }) => ({
-                            key: id,
-                            role: role === 'user' ? 'user' : 'assistant',
-                            content,
-                          }))}
-                        />
-                      </div>
-                      
-                      {/* 聊天输入区 - 放置在底部 */}
-                      <div style={{ padding: '0 0 0 0', marginTop: 'auto' }}>
-                        <Sender
-                          loading={chatLoading}
-                          value={chatInput}
-                          onChange={setChatInput}
-                          onSubmit={sendChatMessage}
-                          placeholder="输入问题，按回车发送..."
-                          submitType="enter"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Empty description="请选择或创建一个对话会话" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+                </Upload>
+              </Space>
+            </div>
           </div>
-        </div>
-      </Sider>
+
+          <div style={{ minHeight: '300px' }}>
+            {renderDocumentContent()}
+          </div>
+        </Card>
+      </Content>
+      
+      {/* 右侧聊天区域，使用封装的聊天组件 */}
+      <ChatComponent 
+        visible={chatVisible}
+        onClose={() => setChatVisible(false)}
+        documentId={selectedDocumentId}
+        documentTitle={selectedDocumentTitle}
+        width="40%"
+      />
     </Layout>
   );
 };
