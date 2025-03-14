@@ -131,7 +131,7 @@ const DataAnalysisHome = () => {
   // 打开文件数据分析
   const openFileAnalysis = (file) => {
     // 导航到数据分析页面，并传递文件信息
-    navigate(`/data-analysis/analysis?fileId=${file.id}&fileName=${encodeURIComponent(file.fileName)}`);
+    navigate(`/data-analysis/analysis?fileId=${file.id}&fileName=${encodeURIComponent(file.originalFileName)}`);
   };
   
   // 格式化文件状态标签
@@ -157,12 +157,12 @@ const DataAnalysisHome = () => {
     return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   };
   
-  // 表格列定义
+  // 表格列定义 - 根据API返回的字段进行调整
   const columns = [
     {
       title: '文件名',
-      dataIndex: 'fileName',
-      key: 'fileName',
+      dataIndex: 'originalFileName', // 使用API返回的字段名
+      key: 'originalFileName',
       render: (text, record) => (
         <Space>
           <FileExcelOutlined style={{ color: '#52c41a' }} />
@@ -178,15 +178,15 @@ const DataAnalysisHome = () => {
       render: (status) => formatFileStatus(status)
     },
     {
-      title: '表数量',
-      dataIndex: 'sheetCount',
-      key: 'sheetCount',
+      title: '行数',
+      dataIndex: 'rowCount', // 使用API返回的字段名
+      key: 'rowCount',
       width: 100,
     },
     {
       title: '上传时间',
-      dataIndex: 'createTime',
-      key: 'createTime',
+      dataIndex: 'uploadTime', // 使用API返回的字段名
+      key: 'uploadTime',
       width: 180,
       render: (text) => formatDate(text)
     },
@@ -264,7 +264,7 @@ const DataAnalysisHome = () => {
               <div style={{ display: 'flex', flexWrap: 'wrap' }}>
                 <div style={{ width: '50%', marginBottom: '10px' }}>
                   <Text type="secondary">文件名：</Text>
-                  <Text>{currentFileDetail.fileName}</Text>
+                  <Text>{currentFileDetail.originalFileName}</Text>
                 </div>
                 <div style={{ width: '50%', marginBottom: '10px' }}>
                   <Text type="secondary">状态：</Text>
@@ -272,41 +272,64 @@ const DataAnalysisHome = () => {
                 </div>
                 <div style={{ width: '50%', marginBottom: '10px' }}>
                   <Text type="secondary">上传时间：</Text>
-                  <Text>{formatDate(currentFileDetail.createTime)}</Text>
+                  <Text>{formatDate(currentFileDetail.uploadTime)}</Text>
                 </div>
                 <div style={{ width: '50%', marginBottom: '10px' }}>
-                  <Text type="secondary">表数量：</Text>
-                  <Text>{currentFileDetail.sheets?.length || 0}</Text>
+                  <Text type="secondary">行数：</Text>
+                  <Text>{currentFileDetail.rowCount || 0}</Text>
+                </div>
+                <div style={{ width: '50%', marginBottom: '10px' }}>
+                  <Text type="secondary">文件大小：</Text>
+                  <Text>{currentFileDetail.fileSize ? `${(currentFileDetail.fileSize / 1024).toFixed(2)} KB` : '未知'}</Text>
+                </div>
+                <div style={{ width: '50%', marginBottom: '10px' }}>
+                  <Text type="secondary">文件类型：</Text>
+                  <Text>{currentFileDetail.fileType?.toUpperCase() || '未知'}</Text>
                 </div>
               </div>
             </div>
             
-            {currentFileDetail.sheets && currentFileDetail.sheets.length > 0 && (
+            {currentFileDetail.columns && currentFileDetail.columns.length > 0 && (
               <div>
-                <Title level={5}>数据表信息</Title>
+                <Title level={5}>列信息</Title>
                 <Table
                   size="small"
-                  rowKey="sheetName"
+                  rowKey="id"
                   columns={[
                     {
-                      title: '表名',
-                      dataIndex: 'sheetName',
-                      key: 'sheetName'
+                      title: '列名',
+                      dataIndex: 'columnName',
+                      key: 'columnName'
                     },
                     {
-                      title: '行数',
-                      dataIndex: 'rowCount',
-                      key: 'rowCount',
-                      width: 100
+                      title: '原始名称',
+                      dataIndex: 'originalName',
+                      key: 'originalName'
                     },
                     {
-                      title: '列数',
-                      dataIndex: 'columnCount',
-                      key: 'columnCount',
-                      width: 100
+                      title: '数据类型',
+                      dataIndex: 'dataType',
+                      key: 'dataType',
+                      width: 100,
+                      render: (type) => (
+                        <Tag color={
+                          type === 'string' ? 'blue' : 
+                          type === 'integer' ? 'green' : 
+                          type === 'decimal' ? 'purple' : 
+                          'default'
+                        }>
+                          {type}
+                        </Tag>
+                      )
+                    },
+                    {
+                      title: '列索引',
+                      dataIndex: 'columnIndex',
+                      key: 'columnIndex',
+                      width: 80
                     }
                   ]}
-                  dataSource={currentFileDetail.sheets}
+                  dataSource={currentFileDetail.columns}
                   pagination={false}
                 />
               </div>

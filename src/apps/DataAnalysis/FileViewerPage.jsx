@@ -46,12 +46,11 @@ const FileViewerPage = () => {
     fetchFileDetail();
   }, [fileId]);
   
-  // 当文件详情加载完成后，默认加载第一个sheet的数据
+  // 当文件详情加载完成后，默认加载数据
   useEffect(() => {
-    if (fileDetail && fileDetail.sheets && fileDetail.sheets.length > 0) {
-      const firstSheet = fileDetail.sheets[0];
-      setActiveSheet(firstSheet.sheetName);
-      fetchSheetData(firstSheet.sheetName);
+    if (fileDetail && fileDetail.tableName) {
+      setActiveSheet(fileDetail.tableName);
+      fetchSheetData(fileDetail.tableName);
     }
   }, [fileDetail]);
   
@@ -89,17 +88,22 @@ const FileViewerPage = () => {
           // 构建表格列
           if (jsonData.length > 0) {
             const firstRow = jsonData[0];
-            const columns = Object.keys(firstRow).map(key => ({
-              title: key,
-              dataIndex: key,
-              key: key,
-              // 根据数据类型设置不同的渲染方式
-              render: (text) => {
-                if (text === null || text === undefined) return '-';
-                if (typeof text === 'boolean') return text ? 'Yes' : 'No';
-                return text.toString();
-              }
-            }));
+            const columns = Object.keys(firstRow).map(key => {
+              // 查找列信息以获取更友好的显示名称
+              const columnInfo = fileDetail?.columns?.find(col => col.columnName === key);
+              
+              return {
+                title: columnInfo ? columnInfo.originalName : key,
+                dataIndex: key,
+                key: key,
+                // 根据数据类型设置不同的渲染方式
+                render: (text) => {
+                  if (text === null || text === undefined) return '-';
+                  if (typeof text === 'boolean') return text ? 'Yes' : 'No';
+                  return text.toString();
+                }
+              };
+            });
             
             setTableColumns(columns);
             setTableData(jsonData);
@@ -119,15 +123,9 @@ const FileViewerPage = () => {
     }
   };
   
-  // 处理表切换
-  const handleSheetChange = (sheetName) => {
-    setActiveSheet(sheetName);
-    fetchSheetData(sheetName);
-  };
-  
   // 开始数据分析
   const startAnalysis = () => {
-    navigate(`/data-analysis/analysis?fileId=${fileId}&fileName=${encodeURIComponent(fileDetail?.fileName || '')}`);
+    navigate(`/data-analysis/analysis?fileId=${fileId}&fileName=${encodeURIComponent(fileDetail?.originalFileName || '')}`);
   };
   
   // 渲染文件基本信息
@@ -140,10 +138,10 @@ const FileViewerPage = () => {
           <div>
             <Breadcrumb items={[
               { title: <Link to="/data-analysis">我的数据</Link> },
-              { title: fileDetail.fileName }
+              { title: fileDetail.originalFileName }
             ]} style={{ marginBottom: '16px' }} />
             
-            <Title level={4}>{fileDetail.fileName}</Title>
+            <Title level={4}>{fileDetail.originalFileName}</Title>
             <Space>
               {fileDetail.status === 2 ? (
                 <Tag color="success">处理完成</Tag>
@@ -154,8 +152,9 @@ const FileViewerPage = () => {
               ) : (
                 <Tag color="error">处理失败</Tag>
               )}
-              <Text type="secondary">上传时间: {new Date(fileDetail.createTime).toLocaleString()}</Text>
-              <Text type="secondary">表数量: {fileDetail.sheets?.length || 0}</Text>
+              <Text type="secondary">上传时间: {new Date(fileDetail.uploadTime).toLocaleString()}</Text>
+              <Text type="secondary">行数: {fileDetail.rowCount || 0}</Text>
+              <Text type="secondary">列数: {fileDetail.columns?.length || 0}</Text>
             </Space>
           </div>
           
@@ -182,69 +181,115 @@ const FileViewerPage = () => {
   
   // 渲染数据表
   const renderDataTable = () => {
-    if (!fileDetail || !fileDetail.sheets || fileDetail.sheets.length === 0) {
+    if (!fileDetail) {
       return (
         <Empty description="没有找到数据表" />
       );
     }
     
+    if (fileDetail.status !== 2) {
+      return (
+        <Empty description={`文件状态: ${
+          fileDetail.status === 0 ? '待处理' : 
+          fileDetail.status === 1 ? '处理中' : '处理失败'
+        }, 请等待处理完成后查看数据`} />
+      );
+    }
+    
     return (
       <Card>
-        <Tabs
-          type="card"
-          activeKey={activeSheet}
-          onChange={handleSheetChange}
-          tabBarExtraContent={
+        <div style={{ marginBottom: '16px' }}>
+          <Space>
+            <Text strong>表格:</Text>
+            <Text>{activeSheet}</Text>
+            <Divider type="vertical" />
+            <Text>行数: {fileDetail.rowCount}</Text>
+            <Divider type="vertical" />
+            <Text>列数: {fileDetail.columns?.length || 0}</Text>
             <Button 
               icon={<ReloadOutlined />} 
               onClick={() => activeSheet && fetchSheetData(activeSheet)}
               loading={loadingTable}
+              style={{ marginLeft: '16px' }}
             >
-              刷新
+              刷新数据
             </Button>
-          }
-        >
-          {fileDetail.sheets.map(sheet => (
-            <TabPane
-              tab={
-                <span>
-                  <TableOutlined />
-                  {sheet.sheetName}
-                  <Tag color="blue" style={{ marginLeft: '8px' }}>
-                    {sheet.rowCount}行
-                  </Tag>
-                </span>
+          </Space>
+        </div>
+        
+        <Table
+          columns={tableColumns}
+          dataSource={tableData}
+          rowKey={(record, index) => index}
+          loading={loadingTable}
+          scroll={{ x: 'max-content' }}
+          pagination={{
+            defaultPageSize: 10,
+            showSizeChanger: true,
+            pageSizeOptions: ['10', '20', '50', '100'],
+            showTotal: (total) => `共 ${total} 条数据`
+          }}
+          size="small"
+          bordered
+        />
+      </Card>
+    );
+  };
+  
+  // 渲染列信息
+  const renderColumnInfo = () => {
+    if (!fileDetail || !fileDetail.columns || fileDetail.columns.length === 0) {
+      return (
+        <Empty description="无列信息" />
+      );
+    }
+    
+    return (
+      <Card title="列信息">
+        <Table
+          rowKey="id"
+          columns={[
+            {
+              title: '列索引',
+              dataIndex: 'columnIndex',
+              key: 'columnIndex',
+              width: 80,
+            },
+            {
+              title: '列名',
+              dataIndex: 'columnName',
+              key: 'columnName',
+            },
+            {
+              title: '显示名称',
+              dataIndex: 'originalName',
+              key: 'originalName',
+            },
+            {
+              title: '描述',
+              dataIndex: 'description',
+              key: 'description',
+            },
+            {
+              title: '数据类型',
+              dataIndex: 'dataType',
+              key: 'dataType',
+              width: 120,
+              render: (type) => {
+                const typeColors = {
+                  'string': 'blue',
+                  'integer': 'green',
+                  'decimal': 'purple',
+                  'datetime': 'orange',
+                  'boolean': 'red'
+                };
+                return <Tag color={typeColors[type] || 'default'}>{type}</Tag>;
               }
-              key={sheet.sheetName}
-            >
-              <div style={{ marginBottom: '16px' }}>
-                <Space>
-                  <Text strong>表格: {sheet.sheetName}</Text>
-                  <Divider type="vertical" />
-                  <Text>行数: {sheet.rowCount}</Text>
-                  <Divider type="vertical" />
-                  <Text>列数: {sheet.columnCount}</Text>
-                </Space>
-              </div>
-              
-              <Table
-                columns={tableColumns}
-                dataSource={tableData}
-                rowKey={(record, index) => index}
-                loading={loadingTable}
-                scroll={{ x: 'max-content' }}
-                pagination={{
-                  defaultPageSize: 10,
-                  showSizeChanger: true,
-                  pageSizeOptions: ['10', '20', '50', '100'],
-                  showTotal: (total) => `共 ${total} 条数据`
-                }}
-                size="small"
-                bordered
-              />
-            </TabPane>
-          ))}
-        </Tabs>
+            }
+          ]}
+          dataSource={fileDetail.columns}
+          pagination={false}
+        />
       </Card>
     );
   };
@@ -277,7 +322,15 @@ const FileViewerPage = () => {
   return (
     <div>
       {renderFileInfo()}
-      {renderDataTable()}
+      
+      <Tabs defaultActiveKey="data">
+        <TabPane tab="数据表" key="data">
+          {renderDataTable()}
+        </TabPane>
+        <TabPane tab="列信息" key="columns">
+          {renderColumnInfo()}
+        </TabPane>
+      </Tabs>
     </div>
   );
 };

@@ -55,8 +55,8 @@ const dtaAPI = {
    */
   getFileData: (fileId, sheetName) => {
     return http.post('/dta/files/datas', { 
-      FileId: fileId,
-      SheetName: sheetName
+      Id: fileId,
+
     });
   },
   
