@@ -19,7 +19,6 @@ import {
   ArrowLeftOutlined,
   NodeIndexOutlined,
   HighlightOutlined,
-  TagOutlined,
   MessageOutlined
 } from '@ant-design/icons';
 import { Link, useParams, useNavigate } from 'react-router-dom';
@@ -34,6 +33,7 @@ const DocumentDetail = () => {
   const [document, setDocument] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('summary');
+  const [mindMapData, setMindMapData] = useState(null);
 
   useEffect(() => {
     fetchDocumentDetail();
@@ -46,6 +46,15 @@ const DocumentDetail = () => {
       
       if (response.code === 200) {
         setDocument(response.data);
+        
+        // 解析知识图谱数据
+        if (response.data.knowledgeGraph?.mindMap) {
+          try {
+            setMindMapData(JSON.parse(response.data.knowledgeGraph.mindMap));
+          } catch (e) {
+            console.error('解析知识图谱数据失败:', e);
+          }
+        }
       } else {
         message.error(response.message || '获取文档详情失败');
       }
@@ -68,7 +77,6 @@ const DocumentDetail = () => {
       if (response.code === 200) {
         message.success('创建聊天会话成功');
         navigate('/knowledge-base');
-        // 这里理想情况下应该直接导航到新创建的聊天会话
       }
     } catch (error) {
       message.error('创建聊天会话失败');
@@ -98,54 +106,17 @@ const DocumentDetail = () => {
     return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   };
 
-  // 渲染知识图谱
-  const renderKnowledgeGraph = () => {
-    if (!document?.knowledgeGraph) {
-      return <Empty description="暂无知识图谱数据" />;
-    }
-
-    try {
-      // 尝试解析知识图谱数据
-      const mindMapData = document.knowledgeGraph.mindMap;
-      if (!mindMapData) {
-        return <Empty description="知识图谱数据格式不正确" />;
-      }
-
-      return (
-        <div style={{ padding: '16px 0' }}>
-          <div style={{ background: '#f9f9f9', borderRadius: '8px', padding: '16px', minHeight: '300px' }}>
-            <Text>知识图谱信息 (该功能正在开发中)</Text>
-            <pre style={{ 
-              maxHeight: '400px', 
-              overflow: 'auto', 
-              background: '#f0f0f0', 
-              padding: '16px',
-              borderRadius: '4px',
-              fontSize: '12px',
-              marginTop: '16px' 
-            }}>
-              {JSON.stringify(JSON.parse(mindMapData), null, 2)}
-            </pre>
-          </div>
-        </div>
-      );
-    } catch (error) {
-      console.error('解析知识图谱数据失败:', error);
-      return <Empty description="解析知识图谱数据失败" />;
-    }
-  };
-
-  // 渲染关键词
+  // 提取关键词
   const renderKeywords = () => {
     if (!document?.knowledgeGraph?.keywords) {
-      return <Empty description="暂无关键词数据" />;
+      return null;
     }
 
     try {
       // 尝试解析关键词数据
       const keywords = JSON.parse(document.knowledgeGraph.keywords);
       if (!Array.isArray(keywords) || keywords.length === 0) {
-        return <Empty description="暂无关键词" />;
+        return null;
       }
 
       return (
@@ -157,21 +128,186 @@ const DocumentDetail = () => {
       );
     } catch (error) {
       console.error('解析关键词数据失败:', error);
-      return <Empty description="解析关键词数据失败" />;
+      return null;
     }
+  };
+
+  // 渲染知识图谱为脑图 - 使用G6渲染
+  const renderMindMap = () => {
+    if (!mindMapData) {
+      return <Empty description="暂无知识图谱数据" />;
+    }
+
+    // 使用JS原生实现一个简单但有效的脑图
+    return (
+      <div style={{ padding: '16px', background: '#f9f9f9', borderRadius: '8px', marginTop: '16px' }}>
+        {/* 设置一个固定高度的容器，内部使用iframe嵌入HTML脑图 */}
+        <div style={{ width: '100%', height: '500px', overflow: 'hidden', borderRadius: '8px' }}>
+          <iframe 
+            srcDoc={`
+              <!DOCTYPE html>
+              <html>
+              <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+               <link
+            type="text/css"
+            rel="stylesheet"
+            href="//cdn.jsdelivr.net/npm/jsmind@0.8.7/style/jsmind.css"
+        />
+        <script
+            type="text/javascript"
+            src="//cdn.jsdelivr.net/npm/jsmind@0.8.7/es6/jsmind.js"
+        ></script>
+                <style>
+                  body, html { margin: 0; padding: 0; height: 100%; overflow: hidden; }
+                  #jsmind_container { width: 100%; height: 100%; }
+                  .jsmind-inner { overflow: hidden; }
+                  
+                  /* 增加提示文字 */
+                  .drag-tip {
+                    position: absolute;
+                    bottom: 10px;
+                    right: 10px;
+                    background-color: rgba(0,0,0,0.5);
+                    color: white;
+                    padding: 5px 10px;
+                    border-radius: 3px;
+                    font-size: 12px;
+                    opacity: 0.8;
+                    z-index: 1000;
+                  }
+                </style>
+              </head>
+              <body>
+                <div id="jsmind_container"></div>
+                <div class="drag-tip">可通过拖拽移动脑图，鼠标滚轮缩放</div>
+                <script>
+                  // 解析传入的知识图谱数据
+                  const mindMapData = ${JSON.stringify(mindMapData)};
+                  
+                  // 将数据转换为jsMind格式
+                  function convertToJsMindFormat(data) {
+                    const rootNode = data.root || data;
+                    
+                    // 构建jsMind数据结构
+                    const jsMindData = {
+                      meta: {
+                        name: "知识图谱",
+                        author: "系统生成",
+                        version: "1.0"
+                      },
+                      format: "node_tree",
+                      data: {
+                        id: "root",
+                        topic: rootNode.name || "根节点",
+                        children: []
+                      }
+                    };
+                    
+                    // 递归处理子节点
+                    function processChildren(sourceNode, targetParent) {
+                      const children = [...(sourceNode.children || []), ...(sourceNode.topics || [])];
+                      
+                      if (children.length > 0) {
+                        targetParent.children = [];
+                        
+                        children.forEach((child, index) => {
+                          const childNode = {
+                            id: 'node_' + Math.random().toString(36).substr(2, 9),
+                            topic: child.name || child.text || child.title || child.content || '节点'
+                          };
+                          
+                          targetParent.children.push(childNode);
+                          
+                          // 递归处理下一层
+                          processChildren(child, childNode);
+                        });
+                      }
+                    }
+                    
+                    // 开始递归处理
+                    processChildren(rootNode, jsMindData.data);
+                    
+                    return jsMindData;
+                  }
+                  
+                  // 转换数据格式
+                  const jsMindData = convertToJsMindFormat(mindMapData);
+                  
+                  // 初始化jsMind，确保启用拖拽功能
+                  const options = {
+                    container: 'jsmind_container',
+                    theme: 'primary',
+                    editable: false,
+                    mode: 'full',  // 使用full模式支持拖拽
+                    view: {
+                      line_width: 2,
+                      line_color: '#555',
+                      draggable: true  // 明确启用拖拽
+                    }
+                  };
+                  
+                  // 创建并渲染脑图
+                  const jm = new jsMind(options);
+                  jm.show(jsMindData);
+                  
+                  // 自动调整到合适大小
+                  setTimeout(() => {
+                    jm.resize();
+                    jm.expand_all();
+                    
+                    // 稍微缩小以显示更多内容
+                    jm.set_zoom(jm.view.zoomOut());
+                    
+                    // 确认拖拽功能已启用
+                    if (jm.view.draggable) {
+                      console.log('拖拽功能已启用');
+                    }
+                  }, 300);
+                  
+                  // 添加提示文字淡出效果
+                  setTimeout(() => {
+                    const tip = document.querySelector('.drag-tip');
+                    if (tip) {
+                      tip.style.transition = 'opacity 1s ease-in-out';
+                      tip.style.opacity = '0';
+                      
+                      // 5秒后移除提示
+                      setTimeout(() => {
+                        tip.style.display = 'none';
+                      }, 5000);
+                    }
+                  }, 3000);
+                </script>
+              </body>
+              </html>
+            `}
+            style={{ width: '100%', height: '100%', border: 'none' }}
+            title="知识图谱"
+          />
+        </div>
+      </div>
+    );
   };
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-
-      
       <Content style={{ padding: '20px', background: '#f0f2f5' }}>
         <Card style={{ marginBottom: '16px' }}>
-          <Breadcrumb items={[
-            { title: <Link to="/"><HomeOutlined /></Link> },
-            { title: <Link to="/knowledge-base">个人知识库</Link> },
-            { title: '文档详情' }
-          ]} />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Breadcrumb items={[
+              { title: <Link to="/"><HomeOutlined /></Link> },
+              { title: <Link to="/knowledge-base">个人知识库</Link> },
+              { title: '文档详情' }
+            ]} />
+            <Button 
+              icon={<ArrowLeftOutlined />} 
+              onClick={goBack}
+            >
+              返回列表
+            </Button>
+          </div>
         </Card>
         
         {loading ? (
@@ -199,23 +335,21 @@ const DocumentDetail = () => {
                     <Text type="secondary">上传于 {formatDate(document.createDate)}</Text>
                     <Text type="secondary">文件大小: {(document.fileSize / 1024).toFixed(2)} KB</Text>
                   </Space>
+                  {/* 显示关键词在状态行下方 */}
+                  {document.status === 2 && (
+                    <div style={{ marginTop: '8px' }}>
+                      {renderKeywords() || <Text type="secondary">暂无关键词</Text>}
+                    </div>
+                  )}
                 </div>
-                <Space>
-                  <Button 
-                    icon={<ArrowLeftOutlined />} 
-                    onClick={goBack}
-                  >
-                    返回列表
-                  </Button>
-                  <Button 
-                    type="primary" 
-                    icon={<MessageOutlined />}
-                    onClick={createChat}
-                    disabled={document.status !== 2}
-                  >
-                    开始对话
-                  </Button>
-                </Space>
+                <Button 
+                  type="primary" 
+                  icon={<MessageOutlined />}
+                  onClick={createChat}
+                  disabled={document.status !== 2}
+                >
+                  开始对话
+                </Button>
               </div>
             </Card>
             
@@ -271,28 +405,11 @@ const DocumentDetail = () => {
                 >
                   <div style={{ padding: '16px 0' }}>
                     <Title level={4}>知识图谱</Title>
-                    {document.status === 2 ? renderKnowledgeGraph() : (
+                    {document.status === 2 ? renderMindMap() : (
                       <Empty description={
                         document.status === 0 ? "文档待处理，暂无知识图谱" :
                         document.status === 1 ? "文档处理中，请稍后查看" :
                         "文档处理失败，无法获取知识图谱"
-                      } />
-                    )}
-                  </div>
-                </Tabs.TabPane>
-                
-                <Tabs.TabPane 
-                  tab={<span><TagOutlined />关键词</span>} 
-                  key="keywords"
-                  disabled={document.status !== 2}
-                >
-                  <div style={{ padding: '16px 0' }}>
-                    <Title level={4}>关键词</Title>
-                    {document.status === 2 ? renderKeywords() : (
-                      <Empty description={
-                        document.status === 0 ? "文档待处理，暂无关键词" :
-                        document.status === 1 ? "文档处理中，请稍后查看" :
-                        "文档处理失败，无法获取关键词"
                       } />
                     )}
                   </div>
