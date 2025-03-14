@@ -128,7 +128,11 @@ const dtaAPI = {
    */
   getChatHistory: (sessionId) => {
     return http.post('/dta/chat/sessions/conversation/history', {
-      SessionId: sessionId
+      SessionId: sessionId,
+      Page: {
+            "PageIndex": 1,
+            "PageSize": 20
+        }
     });
   },
   

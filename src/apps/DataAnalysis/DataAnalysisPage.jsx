@@ -9,7 +9,6 @@ import {
   Avatar,
   Spin,
   Empty,
-  Divider,
   Select,
   Tooltip,
   message,
@@ -19,7 +18,7 @@ import {
   Tag,
   Row,
   Col,
-  Tabs
+  Divider
 } from 'antd';
 import {
   MessageOutlined,
@@ -32,10 +31,12 @@ import {
   FileExcelOutlined,
   TableOutlined,
   QuestionCircleOutlined,
-  DashboardOutlined,
+  DeleteOutlined,
   LineChartOutlined,
   PieChartOutlined,
-  DatabaseOutlined
+  DatabaseOutlined,
+  SearchOutlined,
+  InfoCircleOutlined
 } from '@ant-design/icons';
 import { Bubble, Sender } from '@ant-design/x';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -44,10 +45,9 @@ import dtaAPI from '../../api/dtaAPI';
 const { Content, Sider } = Layout;
 const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
-const { TabPane } = Tabs;
 
 /**
- * 数据分析助手 - 数据分析页面
+ * 数据分析助手 - 数据分析页面（类ChatGPT界面）
  * 用于创建分析会话，提问AI进行数据分析
  */
 const DataAnalysisPage = () => {
@@ -79,8 +79,8 @@ const DataAnalysisPage = () => {
   const [selectedChart, setSelectedChart] = useState(null);
   const [createDashboardModalVisible, setCreateDashboardModalVisible] = useState(false);
   const [creatingDashboard, setCreatingDashboard] = useState(false);
-  const [activeTab, setActiveTab] = useState('chat');
-  const [fileColumns, setFileColumns] = useState([]);
+  const [sessionSearchText, setSessionSearchText] = useState('');
+  const [siderCollapsed, setSiderCollapsed] = useState(false);
   
   const [createSessionForm] = Form.useForm();
   const [saveToDashboardForm] = Form.useForm();
@@ -89,11 +89,15 @@ const DataAnalysisPage = () => {
   // 初始加载
   useEffect(() => {
     fetchFilesList();
+    fetchSessions();
+  }, []);
+  
+  // 当URL中的文件ID变化时，加载文件详情
+  useEffect(() => {
     if (fileIdFromUrl) {
-      fetchSessions(fileIdFromUrl);
       fetchFileDetails(fileIdFromUrl);
     }
-  }, []);
+  }, [fileIdFromUrl]);
   
   // 滚动到底部
   useEffect(() => {
@@ -109,7 +113,6 @@ const DataAnalysisPage = () => {
       
       if (response.code === 200) {
         setSelectedFile(response.data);
-        setFileColumns(response.data.columns || []);
       } else {
         message.error(response.message || '获取文件详情失败');
       }
@@ -126,15 +129,9 @@ const DataAnalysisPage = () => {
       const response = await dtaAPI.getFilesList();
       
       if (response.code === 200) {
+        // 只过滤出已处理完成的文件
         const files = response.data.items.filter(file => file.status === 2);
         setFilesList(files);
-        
-        // 如果没有从URL传入fileId，且有文件，选择第一个
-        if (!fileIdFromUrl && files.length > 0) {
-          setSelectedFileId(files[0].id);
-          fetchSessions(files[0].id);
-          fetchFileDetails(files[0].id);
-        }
       } else {
         message.error(response.message || '获取文件列表失败');
       }
@@ -146,26 +143,34 @@ const DataAnalysisPage = () => {
     }
   };
   
-  // 获取会话列表
-  const fetchSessions = async (fileId) => {
-    if (!fileId) return;
-    
+  // 获取所有会话列表（不关联特定文件）
+  const fetchSessions = async () => {
     try {
       setLoading(true);
       const response = await dtaAPI.getChatSessionsList();
       
       if (response.code === 200) {
-        // 过滤出与当前文件相关的会话
-        const fileSessions = response.data.items?.filter(
-          session => session.fileId === parseInt(fileId)
-        ) || [];
-        
-        setSessions(fileSessions);
+        const allSessions = response.data.items || [];
+        setSessions(allSessions);
         
         // 如果有会话，选择第一个并加载历史
-        if (fileSessions.length > 0) {
-          setSelectedSession(fileSessions[0]);
-          fetchChatHistory(fileSessions[0].id);
+        if (allSessions.length > 0) {
+          // 如果URL中传递了文件ID，尝试找到关联该文件的第一个会话
+          if (fileIdFromUrl) {
+            const relatedSession = allSessions.find(
+              session => session.fileId === parseInt(fileIdFromUrl)
+            );
+            
+            if (relatedSession) {
+              setSelectedSession(relatedSession);
+              fetchChatHistory(relatedSession.id);
+              return;
+            }
+          }
+          
+          // 否则选择第一个会话
+          setSelectedSession(allSessions[0]);
+          fetchChatHistory(allSessions[0].id);
         } else {
           setSelectedSession(null);
           setChatMessages([]);
@@ -280,16 +285,28 @@ const DataAnalysisPage = () => {
       setCreatingSession(true);
       const response = await dtaAPI.createChatSession(
         values.sessionName,
-        selectedFileId
+        values.fileId === 'none' ? null : values.fileId
       );
       
       if (response.code === 200) {
         message.success('创建会话成功');
         
         // 重新加载会话列表
-        fetchSessions(selectedFileId);
+        await fetchSessions();
         setCreateSessionModalVisible(false);
         createSessionForm.resetFields();
+        
+        // 选中新创建的会话
+        const newSessionId = response.data;
+        const updatedSessions = await dtaAPI.getChatSessionsList();
+        
+        if (updatedSessions.code === 200) {
+          const newSession = updatedSessions.data.items.find(s => s.id === newSessionId);
+          if (newSession) {
+            setSelectedSession(newSession);
+            setChatMessages([]);
+          }
+        }
       } else {
         message.error(response.message || '创建会话失败');
       }
@@ -434,21 +451,28 @@ const DataAnalysisPage = () => {
       setSavingToDashboard(false);
     }
   };
-  
-  // 处理文件选择变更
-  const handleFileChange = (fileId) => {
-    setSelectedFileId(fileId);
-    setSelectedSession(null);
-    setChatMessages([]);
-    fetchSessions(fileId);
-    fetchFileDetails(fileId);
-    
-    // 更新URL参数，但不刷新页面
-    const newFileName = filesList.find(f => f.id === fileId)?.originalFileName || '';
-    navigate(
-      `/data-analysis/analysis?fileId=${fileId}&fileName=${encodeURIComponent(newFileName)}`,
-      { replace: true }
-    );
+
+  // 删除会话
+  const deleteSession = async (sessionId) => {
+    try {
+      // API 尚未提供删除方法，此处为预留
+      message.info('删除会话功能暂未实现');
+      // 如果API支持，可以使用以下代码
+      // const response = await dtaAPI.deleteChatSession(sessionId);
+      // if (response.code === 200) {
+      //   message.success('删除会话成功');
+      //   fetchSessions();
+      //   if (selectedSession && selectedSession.id === sessionId) {
+      //     setSelectedSession(null);
+      //     setChatMessages([]);
+      //   }
+      // } else {
+      //   message.error(response.message || '删除会话失败');
+      // }
+    } catch (error) {
+      message.error('删除会话失败');
+      console.error('删除会话失败:', error);
+    }
   };
   
   // 处理会话选择变更
@@ -613,6 +637,19 @@ const DataAnalysisPage = () => {
     );
   };
   
+  // 过滤会话列表
+  const filteredSessions = sessions.filter(session => {
+    if (!sessionSearchText) return true;
+    return session.sessionName.toLowerCase().includes(sessionSearchText.toLowerCase());
+  });
+  
+  // 获取会话关联的文件名称
+  const getSessionFileName = (session) => {
+    if (!session.fileId) return null;
+    const file = filesList.find(f => f.id === session.fileId);
+    return file ? file.originalFileName : null;
+  };
+  
   // 聊天角色定义
   const chatRoles = {
     user: {
@@ -625,115 +662,95 @@ const DataAnalysisPage = () => {
     },
   };
   
-  // 渲染文件信息卡片
-  const renderFileInfoCard = () => {
-    if (!selectedFile) return null;
-    
-    return (
-      <Card style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Space>
-            <Avatar size={40} icon={<FileExcelOutlined />} style={{ backgroundColor: '#52c41a' }} />
-            <div>
-              <Title level={5} style={{ margin: 0 }}>{selectedFile.originalFileName}</Title>
-              <div>
-                <Tag color="success">{selectedFile.rowCount} 行数据</Tag>
-                <Tag color="blue">{selectedFile.columns?.length || 0} 列</Tag>
-              </div>
-            </div>
-          </Space>
-          
-          <Space>
-            <Button 
-              icon={<DatabaseOutlined />}
-              onClick={() => navigate(`/data-analysis/file/${selectedFileId}`)}
-            >
-              查看数据
-            </Button>
-          </Space>
-        </div>
-      </Card>
-    );
-  };
-  
   // 渲染分析引导卡片
   const renderAnalysisGuide = () => {
-    if (!selectedFile || !fileColumns || fileColumns.length === 0) return null;
-    
-    // 将列按类型分组
-    const numericColumns = fileColumns.filter(col => 
-      col.dataType === 'integer' || col.dataType === 'decimal' || col.dataType === 'number'
-    );
-    
-    const textColumns = fileColumns.filter(col => 
-      col.dataType === 'string' || col.dataType === 'text'
-    );
-    
-    const dateColumns = fileColumns.filter(col => 
-      col.dataType === 'datetime' || col.dataType === 'date'
-    );
-    
     const promptTemplates = [
       { 
         title: "数据概述", 
         icon: <DatabaseOutlined />,
-        prompt: `分析这份数据的基本情况，包括总体数量、关键字段的分布等，给出数据概述。` 
+        prompt: `分析我的数据的基本情况，包括总体数量、关键字段的分布等，给出数据概述。` 
       },
       { 
         title: "趋势分析", 
         icon: <LineChartOutlined />,
-        prompt: numericColumns.length > 0 && dateColumns.length > 0 ? 
-          `分析${dateColumns[0].originalName}上${numericColumns[0].originalName}的变化趋势，并用线图可视化。` : 
-          `分析数据中的时间趋势，选择合适的指标进行可视化。`
+        prompt: `分析数据中的时间趋势，选择合适的指标进行可视化。`
       },
       { 
         title: "分组对比", 
         icon: <BarChartOutlined />,
-        prompt: numericColumns.length > 0 && textColumns.length > 0 ? 
-          `按${textColumns[0].originalName}分组，对比各组的${numericColumns[0].originalName}，用柱状图展示。` : 
-          `将数据按合适的分类字段分组，比较各组的数值差异。`
+        prompt: `将数据按合适的分类字段分组，比较各组的数值差异，用柱状图展示。`
       },
       { 
         title: "占比分析", 
         icon: <PieChartOutlined />,
-        prompt: textColumns.length > 0 ? 
-          `分析${textColumns[0].originalName}的占比分布，用饼图展示。` : 
-          `分析数据中某个分类字段的分布占比情况。`
+        prompt: `分析数据中某个分类字段的分布占比情况，用饼图展示。`
       }
     ];
     
     return (
-      <Card title="分析引导" style={{ marginBottom: '16px' }}>
+      <div style={{ padding: '20px' }}>
+        <Title level={3} style={{ textAlign: 'center', marginBottom: '30px' }}>
+          数据分析助手
+        </Title>
+        
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <Paragraph style={{ fontSize: '16px' }}>
+            欢迎使用数据分析助手，您可以通过对话式交互分析您的Excel数据，
+            获取洞察并自动生成可视化图表。
+          </Paragraph>
+        </div>
+        
+        <Divider>分析引导</Divider>
+        
         <Row gutter={[16, 16]}>
           {promptTemplates.map((template, index) => (
             <Col span={12} key={index}>
               <Card
                 hoverable
-                size="small"
+                style={{ height: '100%', cursor: 'pointer' }}
                 onClick={() => {
                   if (selectedSession) {
                     setInputValue(template.prompt);
                   } else {
-                    message.info('请先创建或选择一个分析会话');
                     setCreateSessionModalVisible(true);
                   }
                 }}
               >
-                <Space>
-                  {template.icon}
-                  <Text strong>{template.title}</Text>
-                </Space>
-                <Paragraph
-                  ellipsis={{ rows: 2 }}
-                  style={{ marginTop: '8px', fontSize: '12px', color: '#666' }}
-                >
-                  {template.prompt}
-                </Paragraph>
+                <div style={{ display: 'flex', alignItems: 'flex-start' }}>
+                  <div style={{ 
+                    marginRight: '12px',
+                    fontSize: '24px',
+                    color: '#1890ff' 
+                  }}>
+                    {template.icon}
+                  </div>
+                  <div>
+                    <Text strong style={{ fontSize: '16px', display: 'block', marginBottom: '8px' }}>
+                      {template.title}
+                    </Text>
+                    <Paragraph style={{ color: '#666' }}>
+                      {template.prompt}
+                    </Paragraph>
+                  </div>
+                </div>
               </Card>
             </Col>
           ))}
         </Row>
-      </Card>
+        
+        <Divider>或者</Divider>
+        
+        <div style={{ textAlign: 'center', marginTop: '20px' }}>
+          <Button 
+            type="primary" 
+            size="large" 
+            icon={<PlusOutlined />}
+            onClick={() => setCreateSessionModalVisible(true)}
+          >
+            创建新的分析会话
+          </Button>
+        </div>
+      </div>
     );
   };
   
@@ -760,7 +777,10 @@ const DataAnalysisPage = () => {
       <Form
         form={createSessionForm}
         layout="vertical"
-        initialValues={{ sessionName: `${fileNameFromUrl || '数据'} 分析会话` }}
+        initialValues={{ 
+          sessionName: fileNameFromUrl ? `${fileNameFromUrl} 分析会话` : '新建分析会话',
+          fileId: fileIdFromUrl || 'none'
+        }}
       >
         <Form.Item
           name="sessionName"
@@ -768,6 +788,24 @@ const DataAnalysisPage = () => {
           rules={[{ required: true, message: '请输入会话名称' }]}
         >
           <Input placeholder="请输入会话名称" />
+        </Form.Item>
+        
+        <Form.Item
+          name="fileId"
+          label="关联数据文件"
+          help="可以选择一个数据文件进行分析，或者不关联文件进行通用分析"
+        >
+          <Select placeholder="选择关联的数据文件">
+            <Option value="none">不关联文件</Option>
+            {filesList.map(file => (
+              <Option key={file.id} value={file.id}>
+                <Space>
+                  <FileExcelOutlined style={{ color: '#52c41a' }} />
+                  {file.originalFileName}
+                </Space>
+              </Option>
+            ))}
+          </Select>
         </Form.Item>
       </Form>
     </Modal>
@@ -959,300 +997,250 @@ const DataAnalysisPage = () => {
       </div>
     );
   };
-  
-  // 渲染主界面内容
-  const renderMainContent = () => {
-    if (!selectedFileId) {
-      return (
-        <Card>
-          <Empty 
-            description="请选择一个数据文件开始分析" 
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-          />
-        </Card>
-      );
+
+  // 渲染会话区域
+  const renderChatArea = () => {
+    if (!selectedSession) {
+      return renderAnalysisGuide();
     }
     
     return (
-      <Layout style={{ background: '#fff' }}>
-        <Tabs 
-          activeKey={activeTab} 
-          onChange={setActiveTab}
-          style={{ marginBottom: '16px' }}
-        >
-          <TabPane 
-            tab={<span><MessageOutlined />智能对话</span>} 
-            key="chat"
-          >
-            {renderFileInfoCard()}
-            {renderAnalysisGuide()}
-            
-            <Layout style={{ background: '#fff', borderRadius: '8px', border: '1px solid #f0f0f0', height: 'calc(100vh - 350px)' }}>
-              <Sider
-                width={250}
-                theme="light"
-                style={{ 
-                  background: '#fafafa', 
-                  borderRight: '1px solid #f0f0f0',
-                  height: '100%',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  flexDirection: 'column'
-                }}
-              >
-                <div style={{ padding: '12px 16px', fontWeight: 'bold', borderBottom: '1px solid #f0f0f0' }}>
-                  分析会话
-                </div>
-                
-                <div style={{ flex: 1, overflow: 'auto' }}>
-                  {loading ? (
-                    <div style={{ padding: '24px', textAlign: 'center' }}>
-                      <Spin size="small" />
-                      <div style={{ marginTop: '8px' }}>加载中...</div>
-                    </div>
-                  ) : sessions.length === 0 ? (
-                    <Empty 
-                      description="暂无分析会话" 
-                      image={Empty.PRESENTED_IMAGE_SIMPLE}
-                      style={{ margin: '24px 0' }}
-                    />
-                  ) : (
-                    <List
-                      dataSource={sessions}
-                      renderItem={session => (
-                        <List.Item
-                          style={{ 
-                            cursor: 'pointer',
-                            padding: '12px 16px',
-                            backgroundColor: selectedSession?.id === session.id ? '#e6f7ff' : 'transparent',
-                            borderBottom: '1px solid #f0f0f0'
-                          }}
-                          onClick={() => handleSessionChange(session)}
-                        >
-                          <List.Item.Meta
-                            avatar={<Avatar icon={<MessageOutlined />} size="small" style={{ backgroundColor: selectedSession?.id === session.id ? '#1890ff' : '#d9d9d9' }} />}
-                            title={<Text style={{ fontSize: '14px' }}>{session.sessionName || '未命名会话'}</Text>}
-                            description={<Text style={{ fontSize: '12px' }}>{new Date(session.createTime).toLocaleDateString()}</Text>}
-                          />
-                        </List.Item>
-                      )}
-                    />
-                  )}
-                </div>
-                
-                <div style={{ padding: '12px 16px', borderTop: '1px solid #f0f0f0' }}>
-                  <Button
-                    type="primary"
-                    block
-                    icon={<PlusOutlined />}
-                    onClick={() => setCreateSessionModalVisible(true)}
-                  >
-                    新建分析会话
-                  </Button>
-                </div>
-              </Sider>
-              
-              <Content style={{ 
-                display: 'flex',
-                flexDirection: 'column',
-                height: '100%',
-                position: 'relative'
-              }}>
-                {!selectedSession ? (
-                  <div style={{ 
-                    flex: 1, 
-                    display: 'flex', 
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    padding: '40px 20px'
-                  }}>
-                    <DashboardOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
-                    <Title level={4} style={{ marginBottom: '8px' }}>开始数据分析对话</Title>
-                    <Paragraph style={{ textAlign: 'center', maxWidth: '400px' }}>
-                      创建一个分析会话，告诉AI你想了解什么数据洞察，它将帮你分析数据并生成可视化图表
-                    </Paragraph>
-                    <Button
-                      type="primary"
-                      icon={<PlusOutlined />}
-                      style={{ marginTop: '16px' }}
-                      onClick={() => setCreateSessionModalVisible(true)}
-                    >
-                      创建分析会话
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    {/* 聊天头部 */}
-                    <div style={{ 
-                      padding: '12px 16px', 
-                      borderBottom: '1px solid #f0f0f0',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center'
-                    }}>
-                      <Text strong>{selectedSession.sessionName || '数据分析会话'}</Text>
-                      <Space>
-                        <Button
-                          size="small"
-                          icon={<ReloadOutlined />}
-                          onClick={() => fetchChatHistory(selectedSession.id)}
-                          loading={loadingHistory}
-                        >
-                          刷新
-                        </Button>
-                        <Button
-                          size="small"
-                          icon={<DashboardOutlined />}
-                          onClick={() => navigate('/data-analysis/dashboards')}
-                        >
-                          我的仪表板
-                        </Button>
-                      </Space>
-                    </div>
-                    
-                    {/* 聊天内容区 */}
-                    <div
-                      ref={chatContainerRef}
-                      style={{
-                        flex: 1,
-                        padding: '16px',
-                        overflowY: 'auto'
-                      }}
-                    >
-                      {loadingHistory ? (
-                        <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                          <Spin />
-                          <div style={{ marginTop: '16px' }}>加载聊天历史...</div>
-                        </div>
-                      ) : chatMessages.length === 0 ? (
-                        <div style={{ padding: '40px 20px', textAlign: 'center' }}>
-                          <Empty 
-                            description={
-                              <div>
-                                <p>暂无聊天记录，开始提问吧</p>
-                                <p style={{ fontSize: '13px', color: '#999' }}>
-                                  例如：分析销售数据的趋势、按地区对比销售量、计算各产品销售占比...
-                                </p>
-                              </div>
-                            }
-                            image={Empty.PRESENTED_IMAGE_SIMPLE}
-                          />
-                        </div>
-                      ) : (
-                        chatMessages.map(message => renderChatMessage(message))
-                      )}
-                    </div>
-                    
-                    {/* 输入区域 */}
-                    <div style={{ padding: '16px', borderTop: '1px solid #f0f0f0' }}>
-                      <Sender
-                        loading={sendingMessage}
-                        value={inputValue}
-                        onChange={setInputValue}
-                        onSubmit={sendMessage}
-                        placeholder="输入分析请求，例如：分析销售数据的趋势..."
-                        submitText="发送"
-                        submitType="button"
-                      />
-                    </div>
-                  </>
-                )}
-              </Content>
-            </Layout>
-          </TabPane>
+      <div style={{ 
+        height: '100%', 
+        display: 'flex', 
+        flexDirection: 'column',
+        position: 'relative'
+      }}>
+        {/* 会话头部信息 */}
+        <div style={{ 
+          padding: '16px 20px', 
+          borderBottom: '1px solid #f0f0f0',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <div>
+            <Text strong style={{ fontSize: '16px', marginRight: '8px' }}>
+              {selectedSession.sessionName || '数据分析会话'}
+            </Text>
+            {selectedSession.fileId && (
+              <Tag color="blue" icon={<FileExcelOutlined />}>
+                {getSessionFileName(selectedSession) || `文件ID: ${selectedSession.fileId}`}
+              </Tag>
+            )}
+          </div>
           
-          <TabPane 
-            tab={<span><DashboardOutlined />可视化面板</span>} 
-            key="dashboards"
-          >
-            <div style={{ textAlign: 'center', padding: '40px 0' }}>
-              <DashboardOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
-              <Title level={4}>可视化面板</Title>
-              <Paragraph style={{ maxWidth: '500px', margin: '0 auto 20px' }}>
-                创建和管理您的数据可视化面板，将分析结果保存为可视化图表组件。在这里您可以组织和查看所有保存的分析结果。
-              </Paragraph>
-              <Button 
-                type="primary" 
-                size="large"
+          <Space>
+            <Tooltip title="刷新会话">
+              <Button
+                size="small"
+                icon={<ReloadOutlined />}
+                onClick={() => fetchChatHistory(selectedSession.id)}
+                loading={loadingHistory}
+              />
+            </Tooltip>
+            <Tooltip title="可视化面板">
+              <Button
+                size="small"
+                icon={<BarChartOutlined />}
                 onClick={() => navigate('/data-analysis/dashboards')}
-              >
-                前往可视化面板
-              </Button>
-            </div>
-          </TabPane>
-          
-          <TabPane 
-            tab={<span><FileExcelOutlined />数据详情</span>} 
-            key="data"
-          >
+              />
+            </Tooltip>
+          </Space>
+        </div>
+        
+        {/* 聊天内容区 */}
+        <div
+          ref={chatContainerRef}
+          style={{
+            flex: 1,
+            padding: '16px 20px',
+            overflowY: 'auto',
+            background: '#f9f9f9'
+          }}
+        >
+          {loadingHistory ? (
             <div style={{ textAlign: 'center', padding: '40px 0' }}>
-              <FileExcelOutlined style={{ fontSize: '48px', color: '#52c41a', marginBottom: '16px' }} />
-              <Title level={4}>数据详情</Title>
-              <Paragraph style={{ maxWidth: '500px', margin: '0 auto 20px' }}>
-                查看当前选择的数据文件详细信息，包括所有数据表、字段结构和数据预览。
-              </Paragraph>
-              <Button 
-                type="primary" 
-                size="large"
-                onClick={() => navigate(`/data-analysis/file/${selectedFileId}`)}
-              >
-                查看数据详情
-              </Button>
+              <Spin />
+              <div style={{ marginTop: '16px' }}>加载聊天历史...</div>
             </div>
-          </TabPane>
-        </Tabs>
-      </Layout>
+          ) : chatMessages.length === 0 ? (
+            <div style={{ padding: '40px 20px', textAlign: 'center' }}>
+              <Empty 
+                description={
+                  <div>
+                    <p>暂无聊天记录，开始提问吧</p>
+                    <p style={{ fontSize: '13px', color: '#999' }}>
+                      例如：分析销售数据的趋势、按地区对比销售量、计算各产品销售占比...
+                    </p>
+                  </div>
+                }
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
+            </div>
+          ) : (
+            <>
+              {chatMessages.map(message => renderChatMessage(message))}
+            </>
+          )}
+        </div>
+        
+        {/* 输入区域 */}
+        <div style={{ padding: '16px 20px', background: '#fff', borderTop: '1px solid #f0f0f0' }}>
+          <Sender
+            loading={sendingMessage}
+            value={inputValue}
+            onChange={setInputValue}
+            onSubmit={sendMessage}
+            placeholder="输入分析请求，例如：分析销售数据的趋势..."
+            submitText="发送"
+            submitType="button"
+          />
+        </div>
+      </div>
     );
   };
   
+  // 渲染主界面
   return (
-    <Layout style={{ background: '#fff' }}>
-      <Content style={{ display: 'flex', flexDirection: 'column', padding: '16px' }}>
-        <Card style={{ marginBottom: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Space align="center">
-              <Text strong>选择数据文件:</Text>
-              <Select
-                style={{ width: 300 }}
-                placeholder="请选择数据文件"
-                value={selectedFileId}
-                onChange={handleFileChange}
-                loading={loading}
-                disabled={loading}
-              >
-                {filesList.map(file => (
-                  <Option key={file.id} value={file.id}>
-                    <Space>
-                      <FileExcelOutlined style={{ color: '#52c41a' }} />
-                      {file.originalFileName}
-                    </Space>
-                  </Option>
-                ))}
-              </Select>
-            </Space>
-            
-            <Space>
-              <Button
-                icon={<ReloadOutlined />}
-                onClick={fetchFilesList}
-                loading={loading}
-              >
-                刷新文件
-              </Button>
+    <Layout style={{ height: 'calc(100vh - 148px)', background: '#fff' }}>
+      {/* 左侧会话列表 */}
+      <Sider
+        width={260}
+        theme="light"
+        style={{ 
+          borderRight: '1px solid #f0f0f0',
+          height: '100%',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+        collapsible
+        collapsed={siderCollapsed}
+        onCollapse={setSiderCollapsed}
+        trigger={null}
+      >
+        <div style={{ padding: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {!siderCollapsed && (
+            <>
+              <Text strong>我的分析会话</Text>
               <Button
                 type="primary"
                 icon={<PlusOutlined />}
+                size="small"
                 onClick={() => setCreateSessionModalVisible(true)}
-                disabled={!selectedFileId}
               >
-                创建分析会话
+                新建
               </Button>
-            </Space>
-          </div>
-        </Card>
+            </>
+          )}
+          {siderCollapsed && (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              size="small"
+              onClick={() => setCreateSessionModalVisible(true)}
+              style={{ margin: '0 auto' }}
+            />
+          )}
+        </div>
         
-        {renderMainContent()}
+        {!siderCollapsed && (
+          <div style={{ padding: '0 16px 16px' }}>
+            <Input
+              placeholder="搜索会话"
+              prefix={<SearchOutlined style={{ color: '#bfbfbf' }} />}
+              allowClear
+              value={sessionSearchText}
+              onChange={e => setSessionSearchText(e.target.value)}
+            />
+          </div>
+        )}
+        
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <Spin size="small" />
+            </div>
+          ) : filteredSessions.length === 0 ? (
+            <Empty 
+              description={!siderCollapsed && "暂无会话"} 
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              style={{ margin: '20px 0' }}
+            />
+          ) : (
+            <List
+              dataSource={filteredSessions}
+              renderItem={session => (
+                <List.Item
+                  style={{ 
+                    cursor: 'pointer',
+                    padding: siderCollapsed ? '16px 8px' : '12px 16px',
+                    backgroundColor: selectedSession?.id === session.id ? '#e6f7ff' : 'transparent',
+                    borderBottom: '1px solid #f0f0f0'
+                  }}
+                  onClick={() => handleSessionChange(session)}
+                >
+                  {siderCollapsed ? (
+                    <Avatar icon={<MessageOutlined />} size="small" style={{ 
+                      backgroundColor: selectedSession?.id === session.id ? '#1890ff' : '#d9d9d9',
+                      margin: '0 auto'
+                    }} />
+                  ) : (
+                    <List.Item.Meta
+                      avatar={
+                        <Avatar 
+                          icon={<MessageOutlined />} 
+                          size="small" 
+                          style={{ backgroundColor: selectedSession?.id === session.id ? '#1890ff' : '#d9d9d9' }} 
+                        />
+                      }
+                      title={
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Text ellipsis style={{ maxWidth: '160px' }}>
+                            {session.sessionName || '未命名会话'}
+                          </Text>
+                          <Tooltip title="删除会话">
+                            <Button
+                              type="text"
+                              size="small"
+                              icon={<DeleteOutlined />}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteSession(session.id);
+                              }}
+                              style={{ opacity: 0.6, marginLeft: 'auto' }}
+                            />
+                          </Tooltip>
+                        </div>
+                      }
+                      description={
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#999' }}>
+                            {new Date(session.createTime).toLocaleDateString()}
+                          </div>
+                          {session.fileId && (
+                            <div style={{ fontSize: '12px', color: '#1890ff', display: 'flex', alignItems: 'center' }}>
+                              <FileExcelOutlined style={{ marginRight: '4px' }} />
+                              <Text ellipsis style={{ maxWidth: '140px' }}>
+                                {getSessionFileName(session) || `文件ID: ${session.fileId}`}
+                              </Text>
+                            </div>
+                          )}
+                        </div>
+                      }
+                    />
+                  )}
+                </List.Item>
+              )}
+            />
+          )}
+        </div>
+      </Sider>
+      
+      {/* 右侧聊天区域 */}
+      <Content style={{ height: '100%', overflow: 'hidden' }}>
+        {renderChatArea()}
       </Content>
       
       {/* 模态框 */}
