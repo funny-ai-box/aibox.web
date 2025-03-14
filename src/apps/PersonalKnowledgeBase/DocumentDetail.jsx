@@ -27,7 +27,6 @@ import pkbAPI from '../../api/pkbAPI';
 
 const { Header, Content } = Layout;
 const { Title, Text, Paragraph } = Typography;
-const { TabPane } = Tabs;
 
 const DocumentDetail = () => {
   const { documentId } = useParams();
@@ -78,10 +77,18 @@ const DocumentDetail = () => {
   };
 
   const formatDocStatus = (status) => {
-    if (!status) return null;
-    if (status === 'processing') return <Tag color="processing">处理中</Tag>;
-    if (status === 'failed') return <Tag color="error">处理失败</Tag>;
-    return <Tag color="success">已完成</Tag>;
+    switch (status) {
+      case 0:
+        return <Tag color="default">待处理</Tag>;
+      case 1:
+        return <Tag color="processing">处理中</Tag>;
+      case 2:
+        return <Tag color="success">完成</Tag>;
+      case 3:
+        return <Tag color="error">失败</Tag>;
+      default:
+        return <Tag color="default">未知状态</Tag>;
+    }
   };
 
   // 格式化上传时间
@@ -91,16 +98,72 @@ const DocumentDetail = () => {
     return `${date.getFullYear()}-${(date.getMonth()+1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
   };
 
+  // 渲染知识图谱
+  const renderKnowledgeGraph = () => {
+    if (!document?.knowledgeGraph) {
+      return <Empty description="暂无知识图谱数据" />;
+    }
+
+    try {
+      // 尝试解析知识图谱数据
+      const mindMapData = document.knowledgeGraph.mindMap;
+      if (!mindMapData) {
+        return <Empty description="知识图谱数据格式不正确" />;
+      }
+
+      return (
+        <div style={{ padding: '16px 0' }}>
+          <div style={{ background: '#f9f9f9', borderRadius: '8px', padding: '16px', minHeight: '300px' }}>
+            <Text>知识图谱信息 (该功能正在开发中)</Text>
+            <pre style={{ 
+              maxHeight: '400px', 
+              overflow: 'auto', 
+              background: '#f0f0f0', 
+              padding: '16px',
+              borderRadius: '4px',
+              fontSize: '12px',
+              marginTop: '16px' 
+            }}>
+              {JSON.stringify(JSON.parse(mindMapData), null, 2)}
+            </pre>
+          </div>
+        </div>
+      );
+    } catch (error) {
+      console.error('解析知识图谱数据失败:', error);
+      return <Empty description="解析知识图谱数据失败" />;
+    }
+  };
+
+  // 渲染关键词
+  const renderKeywords = () => {
+    if (!document?.knowledgeGraph?.keywords) {
+      return <Empty description="暂无关键词数据" />;
+    }
+
+    try {
+      // 尝试解析关键词数据
+      const keywords = JSON.parse(document.knowledgeGraph.keywords);
+      if (!Array.isArray(keywords) || keywords.length === 0) {
+        return <Empty description="暂无关键词" />;
+      }
+
+      return (
+        <Space size={[8, 16]} wrap>
+          {keywords.map((keyword, index) => (
+            <Tag key={index} color="blue">{keyword}</Tag>
+          ))}
+        </Space>
+      );
+    } catch (error) {
+      console.error('解析关键词数据失败:', error);
+      return <Empty description="解析关键词数据失败" />;
+    }
+  };
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ background: '#fff', padding: '0 16px', display: 'flex', alignItems: 'center' }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <Link to="/">
-            <Button type="primary" shape="circle" icon={<HomeOutlined />} style={{ marginRight: '16px' }} />
-          </Link>
-          <Title level={3} style={{ margin: 0 }}>文档详情</Title>
-        </div>
-      </Header>
+
       
       <Content style={{ padding: '20px', background: '#f0f2f5' }}>
         <Card style={{ marginBottom: '16px' }}>
@@ -134,6 +197,7 @@ const DocumentDetail = () => {
                   <Space>
                     {formatDocStatus(document.status)}
                     <Text type="secondary">上传于 {formatDate(document.createDate)}</Text>
+                    <Text type="secondary">文件大小: {(document.fileSize / 1024).toFixed(2)} KB</Text>
                   </Space>
                 </div>
                 <Space>
@@ -147,6 +211,7 @@ const DocumentDetail = () => {
                     type="primary" 
                     icon={<MessageOutlined />}
                     onClick={createChat}
+                    disabled={document.status !== 2}
                   >
                     开始对话
                   </Button>
@@ -156,47 +221,82 @@ const DocumentDetail = () => {
             
             <Card>
               <Tabs activeKey={activeTab} onChange={setActiveTab}>
-                <TabPane 
+                <Tabs.TabPane 
                   tab={<span><HighlightOutlined />文档摘要</span>} 
                   key="summary"
                 >
                   <div style={{ padding: '16px 0' }}>
                     <Title level={4}>文档摘要</Title>
-                    <Paragraph style={{ fontSize: '16px', lineHeight: '1.8' }}>
-                      {document.summary || '暂无摘要信息'}
-                    </Paragraph>
+                    {document.status === 2 && document.knowledgeGraph?.summary ? (
+                      <Paragraph style={{ fontSize: '16px', lineHeight: '1.8' }}>
+                        {document.knowledgeGraph.summary}
+                      </Paragraph>
+                    ) : document.status === 0 ? (
+                      <Empty description="文档待处理，暂无摘要信息" />
+                    ) : document.status === 1 ? (
+                      <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                        <Spin />
+                        <div style={{ marginTop: '16px' }}>文档处理中，请稍后查看</div>
+                      </div>
+                    ) : document.status === 3 ? (
+                      <Empty description="文档处理失败，无法获取摘要信息" />
+                    ) : (
+                      <Empty description="暂无摘要信息" />
+                    )}
                   </div>
-                </TabPane>
+                  
+                  {document.status === 2 && document.content && (
+                    <div style={{ padding: '16px 0' }}>
+                      <Divider />
+                      <Title level={4}>文档内容</Title>
+                      <div style={{ 
+                        background: '#f9f9f9', 
+                        padding: '16px', 
+                        borderRadius: '8px',
+                        maxHeight: '500px',
+                        overflow: 'auto'
+                      }}>
+                        <Paragraph style={{ whiteSpace: 'pre-wrap' }}>
+                          {document.content}
+                        </Paragraph>
+                      </div>
+                    </div>
+                  )}
+                </Tabs.TabPane>
                 
-                <TabPane 
+                <Tabs.TabPane 
                   tab={<span><NodeIndexOutlined />知识图谱</span>} 
                   key="knowledge-graph"
+                  disabled={document.status !== 2}
                 >
                   <div style={{ padding: '16px 0' }}>
                     <Title level={4}>知识图谱</Title>
-                    <div style={{ height: '400px', background: '#f9f9f9', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Empty description="知识图谱展示区" />
-                    </div>
+                    {document.status === 2 ? renderKnowledgeGraph() : (
+                      <Empty description={
+                        document.status === 0 ? "文档待处理，暂无知识图谱" :
+                        document.status === 1 ? "文档处理中，请稍后查看" :
+                        "文档处理失败，无法获取知识图谱"
+                      } />
+                    )}
                   </div>
-                </TabPane>
+                </Tabs.TabPane>
                 
-                <TabPane 
+                <Tabs.TabPane 
                   tab={<span><TagOutlined />关键词</span>} 
                   key="keywords"
+                  disabled={document.status !== 2}
                 >
                   <div style={{ padding: '16px 0' }}>
                     <Title level={4}>关键词</Title>
-                    {document.keywords && document.keywords.length > 0 ? (
-                      <Space size={[8, 16]} wrap>
-                        {document.keywords.map((keyword, index) => (
-                          <Tag key={index} color="blue">{keyword}</Tag>
-                        ))}
-                      </Space>
-                    ) : (
-                      <Empty description="暂无关键词" />
+                    {document.status === 2 ? renderKeywords() : (
+                      <Empty description={
+                        document.status === 0 ? "文档待处理，暂无关键词" :
+                        document.status === 1 ? "文档处理中，请稍后查看" :
+                        "文档处理失败，无法获取关键词"
+                      } />
                     )}
                   </div>
-                </TabPane>
+                </Tabs.TabPane>
               </Tabs>
             </Card>
           </>

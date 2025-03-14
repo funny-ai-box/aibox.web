@@ -5,7 +5,7 @@ import reactLogo from '../assets/react.svg'
 import viteLogo from '/vite.svg'
 import '../App.css'
 import { getCurrentUser, logout } from '../utils/http'
-import { appRoutes } from '../routes/config'
+import { appCards } from '../routes/config'  // 修改为导入 appCards 而不是 appRoutes
 
 const { Header, Content, Footer } = Layout
 const { Title } = Typography
@@ -57,7 +57,7 @@ function AppHome() {
       <Content style={{ padding: '24px 50px' }}>
         <div className="site-layout-content">
           <Row gutter={[16, 16]}>
-            {appRoutes.map((app) => (
+            {appCards.map((app) => (  // 使用 appCards 替代 appRoutes
               <Col xs={24} sm={12} md={8} lg={6} key={app.id}>
                 <Link to={app.path}>
                   <Card 

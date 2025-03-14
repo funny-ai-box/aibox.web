@@ -1,14 +1,20 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 
-// 导入路由组件
+// 导入路由保护组件
 import { ProtectedRoute, PublicRoute } from './index';
 import AuthPage from '../pages/Auth/AuthPage';
 import AppHome from '../components/AppHome';
-import DocumentDetail from '../apps/PersonalKnowledgeBase/DocumentDetail'; // 新增文档详情页
 
-// 导入所有应用组件
-import PersonalKnowledgeBase from '../apps/PersonalKnowledgeBase';
+// 导入布局组件
+import KnowledgeBaseLayout from '../apps/PersonalKnowledgeBase/KnowledgeBaseLayout';
+import AppLayout from '../components/AppLayout';
+
+// 导入知识库应用组件
+import KnowledgeBaseHome from '../apps/PersonalKnowledgeBase/KnowledgeBaseHome';
+import DocumentDetail from '../apps/PersonalKnowledgeBase/DocumentDetail';
+
+// 导入其他应用组件
 import App1 from '../apps/App1/App1';
 import App2 from '../apps/App2/App2';
 import App3 from '../apps/App3/App3';
@@ -35,57 +41,49 @@ import App23 from '../apps/App23/App23';
 import App24 from '../apps/App24/App24';
 
 /**
- * 应用路由配置
- * 此配置可用于动态生成路由和导航菜单
+ * 应用卡片配置
+ * 用于应用主页展示的应用卡片
  */
-export const appRoutes = [
+export const appCards = [
   {
     id: 1,
     title: "个人知识库",
     path: "/knowledge-base",
-    component: PersonalKnowledgeBase,
     description: "个人知识管理系统"
   },
-  // 新增文档详情路由
-  {
-    id: 1.1, // 使用小数点来表示它是知识库的子路由
-    title: "文档详情",
-    path: "/knowledge-base/document/:documentId",
-    component: DocumentDetail,
-    description: "文档详细信息",
-    hideInMenu: true // 在菜单中隐藏
-  },
-  { id: 2, title: "待开发1", path: "/app1", component: App1, description: "功能正在开发中" },
-  { id: 3, title: "待开发2", path: "/app2", component: App2, description: "功能正在开发中" },
-  { id: 4, title: "待开发3", path: "/app3", component: App3, description: "功能正在开发中" },
-  { id: 5, title: "待开发4", path: "/app4", component: App4, description: "功能正在开发中" },
-  { id: 6, title: "待开发5", path: "/app5", component: App5, description: "功能正在开发中" },
-  { id: 7, title: "待开发6", path: "/app6", component: App6, description: "功能正在开发中" },
-  { id: 8, title: "待开发7", path: "/app7", component: App7, description: "功能正在开发中" },
-  { id: 9, title: "待开发8", path: "/app8", component: App8, description: "功能正在开发中" },
-  { id: 10, title: "待开发9", path: "/app9", component: App9, description: "功能正在开发中" },
-  { id: 11, title: "待开发10", path: "/app10", component: App10, description: "功能正在开发中" },
-  { id: 12, title: "待开发11", path: "/app11", component: App11, description: "功能正在开发中" },
-  { id: 13, title: "待开发12", path: "/app12", component: App12, description: "功能正在开发中" },
-  { id: 14, title: "待开发13", path: "/app13", component: App13, description: "功能正在开发中" },
-  { id: 15, title: "待开发14", path: "/app14", component: App14, description: "功能正在开发中" },
-  { id: 16, title: "待开发15", path: "/app15", component: App15, description: "功能正在开发中" },
-  { id: 17, title: "待开发16", path: "/app16", component: App16, description: "功能正在开发中" },
-  { id: 18, title: "待开发17", path: "/app17", component: App17, description: "功能正在开发中" },
-  { id: 19, title: "待开发18", path: "/app18", component: App18, description: "功能正在开发中" },
-  { id: 20, title: "待开发19", path: "/app19", component: App19, description: "功能正在开发中" },
-  { id: 21, title: "待开发20", path: "/app20", component: App20, description: "功能正在开发中" },
-  { id: 22, title: "待开发21", path: "/app21", component: App21, description: "功能正在开发中" },
-  { id: 23, title: "待开发22", path: "/app22", component: App22, description: "功能正在开发中" },
-  { id: 24, title: "待开发23", path: "/app23", component: App23, description: "功能正在开发中" },
-  { id: 25, title: "待开发24", path: "/app24", component: App24, description: "功能正在开发中" }
+  { id: 2, title: "待开发1", path: "/app1", description: "功能正在开发中" },
+  { id: 3, title: "待开发2", path: "/app2", description: "功能正在开发中" },
+  { id: 4, title: "待开发3", path: "/app3", description: "功能正在开发中" },
+  { id: 5, title: "待开发4", path: "/app4", description: "功能正在开发中" },
+  { id: 6, title: "待开发5", path: "/app5", description: "功能正在开发中" },
+  { id: 7, title: "待开发6", path: "/app6", description: "功能正在开发中" },
+  { id: 8, title: "待开发7", path: "/app7", description: "功能正在开发中" },
+  { id: 9, title: "待开发8", path: "/app8", description: "功能正在开发中" },
+  { id: 10, title: "待开发9", path: "/app9", description: "功能正在开发中" },
+  { id: 11, title: "待开发10", path: "/app10", description: "功能正在开发中" },
+  { id: 12, title: "待开发11", path: "/app11", description: "功能正在开发中" },
+  { id: 13, title: "待开发12", path: "/app12", description: "功能正在开发中" },
+  { id: 14, title: "待开发13", path: "/app13", description: "功能正在开发中" },
+  { id: 15, title: "待开发14", path: "/app14", description: "功能正在开发中" },
+  { id: 16, title: "待开发15", path: "/app15", description: "功能正在开发中" },
+  { id: 17, title: "待开发16", path: "/app16", description: "功能正在开发中" },
+  { id: 18, title: "待开发17", path: "/app17", description: "功能正在开发中" },
+  { id: 19, title: "待开发18", path: "/app18", description: "功能正在开发中" },
+  { id: 20, title: "待开发19", path: "/app19", description: "功能正在开发中" },
+  { id: 21, title: "待开发20", path: "/app20", description: "功能正在开发中" },
+  { id: 22, title: "待开发21", path: "/app21", description: "功能正在开发中" },
+  { id: 23, title: "待开发22", path: "/app22", description: "功能正在开发中" },
+  { id: 24, title: "待开发23", path: "/app23", description: "功能正在开发中" },
+  { id: 25, title: "待开发24", path: "/app24", description: "功能正在开发中" }
 ];
 
+// 为了兼容性，再导出一次旧名称
+export const appRoutes = appCards;
+
 /**
- * 完整路由配置
- * 包含所有公共路由和受保护路由
+ * 路由配置，使用嵌套结构
  */
-export const routeConfig = [
+const routes = [
   // 公共路由 - 不需要登录
   {
     path: '/login',
@@ -106,15 +104,84 @@ export const routeConfig = [
     )
   },
   
-  // 应用路由 - 动态生成
-  ...appRoutes.map(route => ({
-    path: route.path,
+  // 知识库应用 - 带有子路由的嵌套路由
+  {
+    path: '/knowledge-base',
     element: (
       <ProtectedRoute>
-        <route.component />
+        <KnowledgeBaseLayout />
       </ProtectedRoute>
-    )
-  })),
+    ),
+    children: [
+      {
+        index: true, // 默认子路由
+        element: <KnowledgeBaseHome />
+      },
+      {
+        path: 'document/:documentId',
+        element: <DocumentDetail />
+      }
+    ]
+  },
+  
+  // 其他应用 - 使用通用布局
+  {
+    path: '/app1',
+    element: (
+      <ProtectedRoute>
+        <AppLayout title="待开发1" />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <App1 />
+      }
+    ]
+  },
+  {
+    path: '/app2',
+    element: (
+      <ProtectedRoute>
+        <AppLayout title="待开发2" />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <App2 />
+      }
+    ]
+  },
+  {
+    path: '/app3',
+    element: (
+      <ProtectedRoute>
+        <AppLayout title="待开发3" />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <App3 />
+      }
+    ]
+  },
+  {
+    path: '/app4',
+    element: (
+      <ProtectedRoute>
+        <AppLayout title="待开发4" />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true,
+        element: <App4 />
+      }
+    ]
+  },
+  // ... 添加更多应用路由
   
   // 捕获所有不匹配的路由
   {
@@ -122,3 +189,6 @@ export const routeConfig = [
     element: <Navigate to="/" replace />
   }
 ];
+
+// 导出路由配置，供App.jsx使用
+export default routes;

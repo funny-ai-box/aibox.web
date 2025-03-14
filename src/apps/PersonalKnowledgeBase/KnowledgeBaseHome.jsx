@@ -17,20 +17,19 @@ import {
   UploadOutlined, 
   MessageOutlined, 
   PlusOutlined,
-  HomeOutlined,
   UserOutlined,
   DeleteOutlined
 } from '@ant-design/icons';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Bubble, Sender } from '@ant-design/x';
 import pkbAPI from '../../api/pkbAPI';
 import DocumentListItem from './components/DocumentListItem';
 
-const { Header, Sider, Content } = Layout;
-const { Title, Text } = Typography;
+const { Sider, Content } = Layout;
+const { Text } = Typography;
 const { Search } = Input;
 
-const KnowledgeBase = () => {
+const KnowledgeBaseHome = () => {
   // 文档状态
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -290,6 +289,7 @@ const KnowledgeBase = () => {
 
   // 查看文档详情
   const viewDocumentDetail = (documentId) => {
+    console.log('跳转到文档详情页，文档ID:', documentId);
     // 使用React Router的导航方法跳转到文档详情页面
     navigate(`/knowledge-base/document/${documentId}`);
   };
@@ -329,181 +329,170 @@ const KnowledgeBase = () => {
   };
 
   return (
-    <Layout style={{ height: 'calc(100vh - 30px)'  }}>
-      <Header style={{ background: '#fff', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <Link to="/">
-            <Button type="primary" shape="circle" icon={<HomeOutlined />} style={{ marginRight: '16px' }} />
-          </Link>
-          <Title level={3} style={{ margin: 0 }}>个人知识库</Title>
+    <Layout style={{ background: '#fff', height: 'calc(100vh - 104px)' }}>
+      {/* 左侧文档列表区域 */}
+      <Content style={{ width: '60%', paddingRight: '20px', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <Text style={{ fontSize: '16px', fontWeight: 'bold' }}>我的文档</Text>
+          <Space>
+            <Search
+              placeholder="搜索文档"
+              allowClear
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              style={{ width: 200 }}
+            />
+            <Upload {...uploadProps}>
+              <Button 
+                type="primary" 
+                icon={<UploadOutlined />}
+                loading={uploadLoading}
+              >
+                上传文档
+              </Button>
+            </Upload>
+          </Space>
         </div>
-      </Header>
-      
-      <Layout style={{ padding: '20px', background: '#fff', height: 'calc(100vh - 94px)' }}>
-        {/* 左侧文档列表区域 */}
-        <Content style={{ width: '60%', paddingRight: '20px', overflowY: 'auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <Text style={{ fontSize: '16px', fontWeight: 'bold' }}>我的文档</Text>
-            <Space>
-              <Search
-                placeholder="搜索文档"
-                allowClear
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                style={{ width: 200 }}
-              />
+        
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '40px 0' }}>
+            <Spin size="large" />
+          </div>
+        ) : filteredDocuments.length === 0 ? (
+          <Card style={{ borderStyle: 'dashed', background: '#fafafa' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0' }}>
+              <FileTextOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+              <Text type="secondary" style={{ marginBottom: '16px' }}>
+                {searchKeyword ? '没有找到匹配的文档' : '暂无文档'}
+              </Text>
               <Upload {...uploadProps}>
-                <Button 
-                  type="primary" 
-                  icon={<UploadOutlined />}
-                  loading={uploadLoading}
-                >
+                <Button type="primary" icon={<UploadOutlined />}>
                   上传文档
                 </Button>
               </Upload>
-            </Space>
-          </div>
-          
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: '40px 0' }}>
-              <Spin size="large" />
             </div>
-          ) : filteredDocuments.length === 0 ? (
-            <Card style={{ borderStyle: 'dashed', background: '#fafafa' }}>
+          </Card>
+        ) : (
+          <Space direction="vertical" style={{ width: '100%' }}>
+            {filteredDocuments.map(doc => (
+              <DocumentListItem
+                key={doc.id}
+                document={doc}
+                onView={viewDocumentDetail}
+                onDelete={deleteDocument}
+                onCreateChat={(docId, docTitle) => createChatSession(docId, docTitle)}
+              />
+            ))}
+          </Space>
+        )}
+      </Content>
+      
+      {/* 右侧聊天区域 */}
+      <Sider width="40%" style={{ background: '#f5f7fa', height: '100%', overflowY: 'hidden', borderLeft: '1px solid #e8e8e8' }}>
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid #e8e8e8', fontWeight: 'bold', fontSize: '16px', background: '#fff' }}>智能对话</div>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: 'calc(100% - 45px)' }}>
+            {chatSessions.length === 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0' }}>
-                <FileTextOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
-                <Text type="secondary" style={{ marginBottom: '16px' }}>
-                  {searchKeyword ? '没有找到匹配的文档' : '暂无文档'}
-                </Text>
-                <Upload {...uploadProps}>
-                  <Button type="primary" icon={<UploadOutlined />}>
-                    上传文档
-                  </Button>
-                </Upload>
+                <MessageOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
+                <Text type="secondary" style={{ marginBottom: '16px' }}>暂无对话</Text>
+                <Button 
+                  type="primary" 
+                  icon={<PlusOutlined />}
+                  onClick={() => createChatSession()}
+                >
+                  新建对话
+                </Button>
               </div>
-            </Card>
-          ) : (
-            <Space direction="vertical" style={{ width: '100%' }}>
-              {filteredDocuments.map(doc => (
-                <DocumentListItem
-                  key={doc.id}
-                  document={doc}
-                  onView={viewDocumentDetail}
-                  onDelete={deleteDocument}
-                  onCreateChat={(docId, docTitle) => createChatSession(docId, docTitle)}
-                />
-              ))}
-            </Space>
-          )}
-        </Content>
-        
-        {/* 右侧聊天区域 */}
-        <Sider width="40%" style={{ background: '#f5f7fa', height: '100%', overflowY: 'hidden', borderLeft: '1px solid #e8e8e8' }}>
-          <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '12px 16px', borderBottom: '1px solid #e8e8e8', fontWeight: 'bold', fontSize: '16px', background: '#fff' }}>智能对话</div>
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', height: 'calc(100% - 45px)' }}>
-              {chatSessions.length === 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '40px 0' }}>
-                  <MessageOutlined style={{ fontSize: '48px', color: '#d9d9d9', marginBottom: '16px' }} />
-                  <Text type="secondary" style={{ marginBottom: '16px' }}>暂无对话</Text>
+            ) : (
+              <div style={{ display: 'flex', height: '100%', flex: 1, overflow: 'hidden' }}>
+                {/* 聊天会话列表 */}
+                <div style={{ width: '220px', borderRight: '1px solid #e8e8e8', padding: '10px', overflowY: 'auto', height: '100%', background: '#fff' }}>
                   <Button 
                     type="primary" 
-                    icon={<PlusOutlined />}
+                    icon={<PlusOutlined />} 
+                    style={{ marginBottom: '10px', width: '100%' }}
                     onClick={() => createChatSession()}
                   >
                     新建对话
                   </Button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', height: '100%', flex: 1, overflow: 'hidden' }}>
-                  {/* 聊天会话列表 */}
-                  <div style={{ width: '220px', borderRight: '1px solid #e8e8e8', padding: '10px', overflowY: 'auto', height: '100%', background: '#fff' }}>
-                    <Button 
-                      type="primary" 
-                      icon={<PlusOutlined />} 
-                      style={{ marginBottom: '10px', width: '100%' }}
-                      onClick={() => createChatSession()}
-                    >
-                      新建对话
-                    </Button>
-                    <List
-                      itemLayout="horizontal"
-                      dataSource={chatSessions}
-                      renderItem={session => (
-                        <List.Item 
-                          onClick={() => switchChatSession(session)}
-                          style={{ 
-                            cursor: 'pointer', 
-                            backgroundColor: currentSession && currentSession.id === session.id ? '#f5f5f5' : 'transparent',
-                            padding: '8px',
-                            borderRadius: '4px',
-                            marginBottom: '4px'
-                          }}
-                        >
-                          <List.Item.Meta
-                            avatar={<MessageOutlined />}
-                            title={<div style={{ fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.name}</div>}
-                          />
-                        </List.Item>
-                      )}
-                    />
-                  </div>
-                  
-                  {/* 聊天内容区 */}
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0 16px', height: '100%', overflow: 'hidden' }}>
-                    {currentSession ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                        <div style={{ padding: '10px 0' }}>
-                          <Text strong>{currentSession.name}</Text>
-                        </div>
-                        
-                        {/* 聊天消息区 */}
-                        <div 
-                          ref={chatContainerRef}
-                          style={{ 
-                            flex: 1, 
-                            overflowY: 'auto', 
-                            padding: '16px',
-                            backgroundColor: '#f9f9f9',
-                            borderRadius: '8px',
-                            marginBottom: '10px'
-                          }}
-                        >
-                          <Bubble.List
-                            roles={chatRoles}
-                            items={chatMessages.map(({ id, role, content }) => ({
-                              key: id,
-                              role: role === 'user' ? 'user' : 'assistant',
-                              content,
-                            }))}
-                          />
-                        </div>
-                        
-                        {/* 聊天输入区 - 放置在底部 */}
-                        <div style={{ padding: '0 0 0 0', marginTop: 'auto' }}>
-                          <Sender
-                            loading={chatLoading}
-                            value={chatInput}
-                            onChange={setChatInput}
-                            onSubmit={sendChatMessage}
-                            placeholder="输入问题，按回车发送..."
-                            submitType="enter"
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <Empty description="请选择或创建一个对话会话" />
-                      </div>
+                  <List
+                    itemLayout="horizontal"
+                    dataSource={chatSessions}
+                    renderItem={session => (
+                      <List.Item 
+                        onClick={() => switchChatSession(session)}
+                        style={{ 
+                          cursor: 'pointer', 
+                          backgroundColor: currentSession && currentSession.id === session.id ? '#f5f5f5' : 'transparent',
+                          padding: '8px',
+                          borderRadius: '4px',
+                          marginBottom: '4px'
+                        }}
+                      >
+                        <List.Item.Meta
+                          avatar={<MessageOutlined />}
+                          title={<div style={{ fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.name}</div>}
+                        />
+                      </List.Item>
                     )}
-                  </div>
+                  />
                 </div>
-              )}
-            </div>
+                
+                {/* 聊天内容区 */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0 16px', height: '100%', overflow: 'hidden' }}>
+                  {currentSession ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                      <div style={{ padding: '10px 0' }}>
+                        <Text strong>{currentSession.name}</Text>
+                      </div>
+                      
+                      {/* 聊天消息区 */}
+                      <div 
+                        ref={chatContainerRef}
+                        style={{ 
+                          flex: 1, 
+                          overflowY: 'auto', 
+                          padding: '16px',
+                          backgroundColor: '#f9f9f9',
+                          borderRadius: '8px',
+                          marginBottom: '10px'
+                        }}
+                      >
+                        <Bubble.List
+                          roles={chatRoles}
+                          items={chatMessages.map(({ id, role, content }) => ({
+                            key: id,
+                            role: role === 'user' ? 'user' : 'assistant',
+                            content,
+                          }))}
+                        />
+                      </div>
+                      
+                      {/* 聊天输入区 - 放置在底部 */}
+                      <div style={{ padding: '0 0 0 0', marginTop: 'auto' }}>
+                        <Sender
+                          loading={chatLoading}
+                          value={chatInput}
+                          onChange={setChatInput}
+                          onSubmit={sendChatMessage}
+                          placeholder="输入问题，按回车发送..."
+                          submitType="enter"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Empty description="请选择或创建一个对话会话" />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
-        </Sider>
-      </Layout>
+        </div>
+      </Sider>
     </Layout>
   );
 };
 
-export default KnowledgeBase;
+export default KnowledgeBaseHome;
