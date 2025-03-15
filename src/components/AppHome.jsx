@@ -196,32 +196,32 @@ function AppHome() {
         </div>
         
         {/* 卡片网格 */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '25px', maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px', maxWidth: '1200px', margin: '0 auto' }}>
           {filteredApps.map((app) => (
             <Link to={app.path} key={app.id} style={{ textDecoration: 'none' }}>
               <div className="card" style={{ 
                 backgroundColor: 'white',
-                borderRadius: '16px',
+                borderRadius: '12px',
                 overflow: 'hidden',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.08)',
-                transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
+                transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                 cursor: 'pointer',
                 position: 'relative',
                 height: '100%',
-                border: '1px solid rgba(0, 0, 0, 0.05)',
+                border: '1px solid rgba(0, 0, 0, 0.04)',
                 transform: 'translateY(0)',
                 backfaceVisibility: 'hidden'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-8px)';
-                e.currentTarget.style.boxShadow = '0 20px 40px rgba(0, 0, 0, 0.12)';
+                e.currentTarget.style.transform = 'translateY(-5px)';
+                e.currentTarget.style.boxShadow = '0 12px 20px rgba(0, 0, 0, 0.08)';
               }}
               onMouseLeave={(e) => {
                 e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.08)';
+                e.currentTarget.style.boxShadow = '0 3px 12px rgba(0, 0, 0, 0.06)';
               }}>
                 <div style={{ 
-                  height: '160px',
+                  height: '120px',
                   background: getGradientStyle(app.id),
                   position: 'relative',
                   overflow: 'hidden'
@@ -229,39 +229,39 @@ function AppHome() {
                   {/* 装饰性背景图案 */}
                   <div style={{
                     position: 'absolute',
-                    width: '200px',
-                    height: '200px',
+                    width: '140px',
+                    height: '140px',
                     borderRadius: '50%',
                     background: 'rgba(255, 255, 255, 0.1)',
-                    top: '-100px',
-                    right: '-50px'
+                    top: '-70px',
+                    right: '-35px'
                   }}></div>
                   <div style={{
                     position: 'absolute',
-                    width: '100px',
-                    height: '100px',
+                    width: '80px',
+                    height: '80px',
                     borderRadius: '50%',
                     background: 'rgba(255, 255, 255, 0.1)',
-                    bottom: '-20px',
-                    left: '30px'
+                    bottom: '-15px',
+                    left: '20px'
                   }}></div>
                   
                   <div style={{ 
-                    width: '80px',
-                    height: '80px',
+                    width: '56px',
+                    height: '56px',
                     backgroundColor: 'white',
-                    borderRadius: '16px',
+                    borderRadius: '10px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 10px 20px rgba(0, 0, 0, 0.1)',
+                    boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)',
                     position: 'absolute',
-                    bottom: '-30px',
-                    left: '24px',
+                    bottom: '-20px',
+                    left: '16px',
                     zIndex: 1
                   }}>
                     {app.icon ? app.icon : (
-                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 4.5V18M12 4.5L7.5 9M12 4.5L16.5 9M7.5 15H16.5" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     )}
@@ -271,58 +271,59 @@ function AppHome() {
                 {app.badge && (
                   <span style={{ 
                     position: 'absolute',
-                    top: '16px',
-                    right: '16px',
+                    top: '12px',
+                    right: '12px',
                     backgroundColor: 'rgba(255, 255, 255, 0.95)',
                     color: '#6366f1',
-                    fontSize: '0.75rem',
-                    padding: '6px 12px',
+                    fontSize: '0.7rem',
+                    padding: '4px 10px',
                     borderRadius: '100px',
                     fontWeight: 600,
-                    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
                     letterSpacing: '0.5px'
                   }}>
                     {app.badge}
                   </span>
                 )}
                 
-                <div style={{ padding: '40px 24px 24px' }}>
+                <div style={{ padding: '28px 16px 16px' }}>
                   <h3 style={{ 
-                    fontSize: '1.25rem',
+                    fontSize: '1rem',
                     fontWeight: 700,
-                    marginBottom: '12px',
+                    marginBottom: '8px',
                     color: '#1e293b'
                   }}>
                     {app.title}
                   </h3>
                   <p style={{ 
                     color: '#64748b',
-                    fontSize: '0.95rem',
-                    lineHeight: 1.6,
+                    fontSize: '0.85rem',
+                    lineHeight: 1.5,
                     display: '-webkit-box',
-                    WebkitLineClamp: 3,
+                    WebkitLineClamp: 2,
                     WebkitBoxOrient: 'vertical',
                     overflow: 'hidden',
-                    margin: 0
+                    margin: 0,
+                    height: '40px'
                   }}>
                     {app.description}
                   </p>
                   
                   <div style={{
-                    marginTop: '20px',
+                    marginTop: '12px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'flex-end'
                   }}>
                     <div style={{
-                      fontSize: '0.85rem',
+                      fontSize: '0.8rem',
                       fontWeight: 600,
                       color: '#6366f1',
                       display: 'flex',
                       alignItems: 'center'
                     }}>
                       进入应用
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginLeft: '4px'}}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginLeft: '3px'}}>
                         <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     </div>
