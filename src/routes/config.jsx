@@ -22,12 +22,10 @@ import DashboardsPage from '../apps/DataAnalysis/DashboardsPage';
 import DashboardDetailPage from '../apps/DataAnalysis/DashboardDetailPage';
 import DataAnalysisLayout from '../apps/DataAnalysis/DataAnalysisLayout';
 
-
-// 导入其他应用组件
-import App1 from '../apps/App1/App1';
-import App2 from '../apps/App2/App2';
-import App3 from '../apps/App3/App3';
-import App4 from '../apps/App4/App4';
+import VideoMixerLayout from '../apps/VideoMixer/VideoMixerLayout';
+import ProjectListPage from '../apps/VideoMixer/ProjectListPage';
+import ProjectEditPage from '../apps/VideoMixer/ProjectEditPage';
+import ProjectDetailPage from '../apps/VideoMixer/ProjectDetailPage';
 
 
 /**
@@ -47,19 +45,13 @@ export const appCards = [
     path: "/data-analysis",
     description: "Excel数据分析与可视化"
   },
-  { id: 3, title: "待开发2", path: "/app2", description: "功能正在开发中" },
-  { id: 4, title: "待开发3", path: "/app3", description: "功能正在开发中" },
-  { id: 5, title: "待开发4", path: "/app4", description: "功能正在开发中" },
-  { id: 6, title: "待开发5", path: "/app5", description: "功能正在开发中" },
-  { id: 7, title: "待开发6", path: "/app6", description: "功能正在开发中" },
-  { id: 8, title: "待开发7", path: "/app7", description: "功能正在开发中" },
-  { id: 9, title: "待开发8", path: "/app8", description: "功能正在开发中" },
-  { id: 10, title: "待开发9", path: "/app9", description: "功能正在开发中" },
-  { id: 11, title: "待开发10", path: "/app10", description: "功能正在开发中" },
-  { id: 12, title: "待开发11", path: "/app11", description: "功能正在开发中" },
-  { id: 13, title: "待开发12", path: "/app12", description: "功能正在开发中" },
-  { id: 14, title: "待开发13", path: "/app13", description: "功能正在开发中" },
-  { id: 15, title: "待开发14", path: "/app14", description: "功能正在开发中" },
+  {
+    id: 3, // 注意：根据你的实际情况调整ID
+    title: "视频智能混剪工具",
+    path: "/video-mixer",
+    description: "AI智能视频剪辑与合成"
+  },
+
 
 ];
 
@@ -139,65 +131,30 @@ const routes = [
       }
     ]
   },
+  {
+    path: '/video-mixer',
+    element: (
+      <ProtectedRoute>
+        <VideoMixerLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true, // 默认子路由
+        element: <ProjectListPage />
+      },
+      {
+        path: 'edit/:projectId', // 项目编辑页面
+        element: <ProjectEditPage />
+      },
+      {
+        path: 'details/:projectId', // 项目详情页面
+        element: <ProjectDetailPage />
+      }
+    ]
+  },
   
-  // 其他应用 - 使用通用布局
-  {
-    path: '/app1',
-    element: (
-      <ProtectedRoute>
-        <AppLayout title="待开发1" />
-      </ProtectedRoute>
-    ),
-    children: [
-      {
-        index: true,
-        element: <App1 />
-      }
-    ]
-  },
-  {
-    path: '/app2',
-    element: (
-      <ProtectedRoute>
-        <AppLayout title="待开发2" />
-      </ProtectedRoute>
-    ),
-    children: [
-      {
-        index: true,
-        element: <App2 />
-      }
-    ]
-  },
-  {
-    path: '/app3',
-    element: (
-      <ProtectedRoute>
-        <AppLayout title="待开发3" />
-      </ProtectedRoute>
-    ),
-    children: [
-      {
-        index: true,
-        element: <App3 />
-      }
-    ]
-  },
-  {
-    path: '/app4',
-    element: (
-      <ProtectedRoute>
-        <AppLayout title="待开发4" />
-      </ProtectedRoute>
-    ),
-    children: [
-      {
-        index: true,
-        element: <App4 />
-      }
-    ]
-  },
-  // ... 添加更多应用路由
+  
   
   // 捕获所有不匹配的路由
   {
