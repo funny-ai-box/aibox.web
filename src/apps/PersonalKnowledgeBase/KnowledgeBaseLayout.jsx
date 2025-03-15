@@ -1,7 +1,7 @@
 import React from 'react';
 import { Layout, Button, Typography } from 'antd';
 import { Link, Outlet } from 'react-router-dom';
-import { HomeOutlined } from '@ant-design/icons';
+import { LeftOutlined } from '@ant-design/icons';
 
 const { Header, Content } = Layout;
 const { Title } = Typography;
@@ -16,7 +16,7 @@ const KnowledgeBaseLayout = () => {
       <Header style={{ background: '#fff', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <Link to="/">
-            <Button type="primary" shape="circle" icon={<HomeOutlined />} style={{ marginRight: '16px' }} />
+          <Button type="primary" shape="circle" icon={<LeftOutlined />} style={{ marginRight: '16px' }} />
           </Link>
           <Title level={3} style={{ margin: 0 }}>个人知识库</Title>
         </div>

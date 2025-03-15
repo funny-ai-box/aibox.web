@@ -67,7 +67,7 @@ const DataAnalysisPage = () => {
   // 状态
   const [loading, setLoading] = useState(true);
   const [filesList, setFilesList] = useState([]);
-  const [selectedFileId, setSelectedFileId] = useState(fileIdFromUrl || null);
+
   const [selectedFile, setSelectedFile] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [selectedSession, setSelectedSession] = useState(null);
@@ -466,7 +466,7 @@ const DataAnalysisPage = () => {
   };
 
   // 删除会话
-  const deleteSession = async (sessionId) => {
+  const deleteSession = async () => {
     try {
       // API 尚未提供删除方法，此处为预留
       message.info('删除会话功能暂未实现');
@@ -521,17 +521,7 @@ const DataAnalysisPage = () => {
     return file ? file.originalFileName : null;
   };
   
-  // 聊天角色定义
-  const chatRoles = {
-    user: {
-      placement: 'end',
-      avatar: { icon: <UserOutlined />, style: { background: '#f0f0f0' } },
-    },
-    assistant: {
-      placement: 'start',
-      avatar: { icon: <RobotOutlined />, style: { background: '#1890ff', color: '#fff' } },
-    },
-  };
+
   
   // 渲染分析引导卡片
   const renderAnalysisGuide = () => {

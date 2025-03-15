@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { 
   Card, 
   Button, 
@@ -47,49 +47,8 @@ const SqlExecutionResultComponent = ({
   const visualizationConfig = buildVisualization(sqlExecution);
   const { type, config, data } = visualizationConfig;
   
-  // 根据图表类型选择图标
-  const getChartIcon = () => {
-    switch (type) {
-      case 'line':
-        return <LineChartOutlined />;
-      case 'bar':
-        return <BarChartOutlined />;
-      case 'pie':
-        return <PieChartOutlined />;
-      case 'scatter':
-        return <DotChartOutlined />;
-      case 'table':
-      default:
-        return <TableOutlined />;
-    }
-  };
 
-  // 获取图表类型名称
-  const getChartTypeName = () => {
-    switch (type) {
-      case 'line':
-        return '折线图';
-      case 'bar':
-        return '柱状图';
-      case 'pie':
-        return '饼图';
-      case 'scatter':
-        return '散点图';
-      case 'table':
-      default:
-        return '数据表';
-    }
-  };
 
-  // 获取图表标题
-  const getChartTitle = () => {
-    // 从多个可能的位置获取标题
-    return config.title || 
-           (sqlExecution.visualization?.title) || 
-           '查询结果';
-  };
-
-  // 显示SQL语句模态框
   const showSqlModal = () => {
     Modal.info({
       title: 'SQL语句',
@@ -135,7 +94,7 @@ const SqlExecutionResultComponent = ({
       </Space>
       
       <Space>
-        <span>{getChartTypeName()}</span>
+  
         <Button
           type="primary"
           size="small"
