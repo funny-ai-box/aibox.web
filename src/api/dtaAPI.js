@@ -176,7 +176,7 @@ const dtaAPI = {
    */
   addSqlDataToPage: (pageId, sqlExecutionId, title, description = '') => {
     return http.post('/dta/pages/addsqldata', {
-      PageId: pageId,
+      Id: pageId,
       SqlExecutionIds: [sqlExecutionId],
       Title: title,
       Description: description,

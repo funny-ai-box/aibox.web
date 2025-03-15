@@ -359,7 +359,7 @@ const ChatComponent = ({
                       textOverflow: 'ellipsis', 
                       whiteSpace: 'nowrap' 
                     }}>
-                      {session.name}
+                      {session.sessionName}
                     </div>
                   }
                 />

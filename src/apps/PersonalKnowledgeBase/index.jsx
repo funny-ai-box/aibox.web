@@ -441,7 +441,7 @@ const KnowledgeBase = () => {
                         >
                           <List.Item.Meta
                             avatar={<MessageOutlined />}
-                            title={<div style={{ fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.name}</div>}
+                            title={<div style={{ fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.sessionName}</div>}
                           />
                         </List.Item>
                       )}
