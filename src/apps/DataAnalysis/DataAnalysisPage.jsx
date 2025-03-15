@@ -41,6 +41,9 @@ import {
 } from '@ant-design/icons';
 import { Bubble, Sender } from '@ant-design/x';
 import { useLocation, useNavigate } from 'react-router-dom';
+import SqlExecutionResultComponent from "./components/SqlExecutionResultComponent";
+import { buildVisualization } from './utils/visualizationUtils';
+
 import dtaAPI from '../../api/dtaAPI';
 
 const { Content, Sider } = Layout;
@@ -496,172 +499,15 @@ const DataAnalysisPage = () => {
   const renderSqlExecutionResult = (sqlExecution) => {
     if (!sqlExecution) return null;
     
-    const { dataJson, visualization, sqlStatement } = sqlExecution;
-    
-    // 如果没有数据，显示空状态
-    if (!dataJson) {
-      return (
-        <Empty description="无数据可显示" />
-      );
-    }
-    
-    // 解析JSON数据
-    let parsedData;
-    try {
-      parsedData = JSON.parse(dataJson);
-    } catch (error) {
-      console.error('解析数据失败:', error);
-      return (
-        <Empty description="数据解析失败" />
-      );
-    }
-    
-    // 如果有可视化配置，渲染图表
-    if (visualization && visualization.htmlUrl) {
-      return (
-        <div>
-          <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Space>
-              <Button 
-                size="small" 
-                icon={<ReloadOutlined />}
-                onClick={() => refreshChartData(sqlExecution.id)}
-              >
-                刷新数据
-              </Button>
-              
-              <Tooltip title="查看SQL">
-                <Button
-                  size="small"
-                  icon={<InfoCircleOutlined />}
-                  onClick={() => Modal.info({
-                    title: 'SQL语句',
-                    content: (
-                      <div>
-                        <pre style={{ 
-                          whiteSpace: 'pre-wrap', 
-                          wordBreak: 'break-all', 
-                          backgroundColor: '#f5f5f5', 
-                          padding: '10px',
-                          borderRadius: '4px' 
-                        }}>
-                          {sqlStatement}
-                        </pre>
-                      </div>
-                    ),
-                    width: 600,
-                  })}
-                >
-                  查看SQL
-                </Button>
-              </Tooltip>
-            </Space>
-            
-            <Button
-              type="primary"
-              size="small"
-              icon={<SaveOutlined />}
-              onClick={() => openSaveToDashboardModal(sqlExecution)}
-            >
-              保存到仪表板
-            </Button>
-          </div>
-          
-          {/* 渲染HTML可视化（使用iFrame保证安全） */}
-          <div style={{ border: '1px solid #f0f0f0', borderRadius: '4px', overflow: 'hidden' }}>
-            <iframe
-              src={`http://106.75.71.65:57460${visualization.htmlUrl}`}
-              style={{ width: '100%', height: '400px', border: 'none' }}
-              title="Visualization"
-              sandbox="allow-scripts allow-same-origin"
-            />
-          </div>
-        </div>
-      );
-    }
-    
-    // 如果没有可视化，显示表格数据
-    if (Array.isArray(parsedData) && parsedData.length > 0) {
-      // 构建表格列
-      const firstRow = parsedData[0];
-      const columns = Object.keys(firstRow).map(key => ({
-        title: key,
-        dataIndex: key,
-        key,
-        render: (text) => {
-          if (text === null || text === undefined) return '-';
-          if (typeof text === 'object' && text instanceof Date) return text.toLocaleString();
-          return text.toString();
-        }
-      }));
-      
-      return (
-        <div>
-          <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between' }}>
-            <Space>
-              <Button 
-                size="small" 
-                icon={<ReloadOutlined />}
-                onClick={() => refreshChartData(sqlExecution.id)}
-              >
-                刷新数据
-              </Button>
-              
-              <Tooltip title="查看SQL">
-                <Button
-                  size="small"
-                  icon={<InfoCircleOutlined />}
-                  onClick={() => Modal.info({
-                    title: 'SQL语句',
-                    content: (
-                      <div>
-                        <pre style={{ 
-                          whiteSpace: 'pre-wrap', 
-                          wordBreak: 'break-all', 
-                          backgroundColor: '#f5f5f5', 
-                          padding: '10px',
-                          borderRadius: '4px' 
-                        }}>
-                          {sqlStatement}
-                        </pre>
-                      </div>
-                    ),
-                    width: 600,
-                  })}
-                >
-                  查看SQL
-                </Button>
-              </Tooltip>
-            </Space>
-            
-            <Button
-              type="primary"
-              size="small"
-              icon={<SaveOutlined />}
-              onClick={() => openSaveToDashboardModal(sqlExecution)}
-            >
-              保存到仪表板
-            </Button>
-          </div>
-          
-          <Table
-            columns={columns}
-            dataSource={parsedData}
-            rowKey={(record, index) => index}
-            pagination={{ pageSize: 5 }}
-            size="small"
-            scroll={{ x: 'max-content' }}
-            bordered
-          />
-        </div>
-      );
-    }
-    
     return (
-      <Empty description="无数据可显示" />
+      <SqlExecutionResultComponent 
+        sqlExecution={sqlExecution}
+        onRefresh={refreshChartData}
+        onSave={openSaveToDashboardModal}
+        refreshing={false} // 这里您可能需要添加一个状态来追踪每个SQL执行的刷新状态
+      />
     );
   };
-  
   // 过滤会话列表
   const filteredSessions = sessions.filter(session => {
     if (!sessionSearchText) return true;
@@ -993,7 +839,7 @@ const DataAnalysisPage = () => {
           </div>
         </div>
         
-        {/* SQL执行结果和可视化 */}
+        {/* SQL执行结果和可视化 - 使用新组件 */}
         {isAI && message.sqlExecutions && message.sqlExecutions.length > 0 && (
           <div style={{ marginTop: '12px', marginLeft: '40px', width: 'calc(100% - 40px)' }}>
             {message.sqlExecutions.map((sqlExecution, index) => (
@@ -1002,12 +848,21 @@ const DataAnalysisPage = () => {
                 style={{ marginBottom: '12px' }}
                 title={
                   <Space>
-                    {sqlExecution.visualization ? (
-                      <BarChartOutlined style={{ color: '#1890ff' }} />
-                    ) : (
-                      <TableOutlined style={{ color: '#52c41a' }} />
-                    )}
-                    
+                    {(() => {
+                      // 获取可视化配置以确定图表类型
+                      const { type } = buildVisualization(sqlExecution);
+                      
+                      // 根据图表类型显示对应图标
+                      switch(type) {
+                        case 'line': return <LineChartOutlined style={{ color: '#1890ff' }} />;
+                        case 'bar': return <BarChartOutlined style={{ color: '#1890ff' }} />;
+                        case 'pie': return <PieChartOutlined style={{ color: '#1890ff' }} />;
+                        case 'scatter': return <DotChartOutlined style={{ color: '#1890ff' }} />;
+                        case 'table':
+                        default: return <TableOutlined style={{ color: '#52c41a' }} />;
+                      }
+                    })()}
+                    <span>{sqlExecution.title || '查询结果'}</span>
                   </Space>
                 }
                 size="small"
@@ -1020,7 +875,6 @@ const DataAnalysisPage = () => {
       </div>
     );
   };
-
   // 渲染会话区域
   const renderChatArea = () => {
     if (!selectedSession) {
