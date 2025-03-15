@@ -1007,9 +1007,7 @@ const DataAnalysisPage = () => {
                     ) : (
                       <TableOutlined style={{ color: '#52c41a' }} />
                     )}
-                    <span>
-                      {sqlExecution.visualization ? '数据可视化' : '查询结果'}
-                    </span>
+                    
                   </Space>
                 }
                 size="small"

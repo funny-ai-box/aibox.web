@@ -27,7 +27,6 @@ import ProjectListPage from '../apps/VideoMixer/ProjectListPage';
 import ProjectEditPage from '../apps/VideoMixer/ProjectEditPage';
 import ProjectDetailPage from '../apps/VideoMixer/ProjectDetailPage';
 
-
 /**
  * 应用卡片配置
  * 用于应用主页展示的应用卡片
@@ -37,22 +36,34 @@ export const appCards = [
     id: 1,
     title: "个人知识库",
     path: "/knowledge-base",
-    description: "个人知识管理系统"
+    description: "个人知识管理系统，导入文档后智能分析、提问和对话，高效管理您的知识资产",
+    category: "文本生成",
+    badge: "",
+    icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 4.5V18M12 4.5L7.5 9M12 4.5L16.5 9M7.5 15H16.5" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
   },
   {
     id: 2,
     title: "数据分析助手",
     path: "/data-analysis",
-    description: "Excel数据分析与可视化"
+    description: "Excel数据分析与可视化，对话式交互分析数据、自动生成图表、发现数据洞察",
+    category: "数据分析",
+    icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M16 8V16M12 11V16M8 14V16M6 20H18C19.1046 20 20 19.1046 20 18V6C20 4.89543 19.1046 4 18 4H6C4.89543 4 4 4.89543 4 6V18C4 19.1046 4.89543 20 6 20Z" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
   },
   {
-    id: 3, // 注意：根据你的实际情况调整ID
+    id: 3,
     title: "视频智能混剪工具",
     path: "/video-mixer",
-    description: "AI智能视频剪辑与合成"
-  },
-
-
+    description: "AI驱动的视频剪辑与合成工具，上传视频后自动分析、剪辑和优化，轻松创建专业视频",
+    category: "视频处理",
+    badge: "",
+    icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M15 10L19.5528 7.72361C19.8343 7.58281 20 7.30778 20 7V17C20 17.3078 19.8343 17.5828 19.5528 17.7236L15 20M5 5H14C14.5523 5 15 5.44772 15 6V18C15 18.5523 14.5523 19 14 19H5C4.44772 19 4 18.5523 4 18V6C4 5.44772 4.44772 5 5 5Z" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  }
 ];
 
 // 为了兼容性，再导出一次旧名称
@@ -153,8 +164,6 @@ const routes = [
       }
     ]
   },
-  
-  
   
   // 捕获所有不匹配的路由
   {
