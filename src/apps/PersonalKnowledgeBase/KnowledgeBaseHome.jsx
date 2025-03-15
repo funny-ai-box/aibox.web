@@ -345,8 +345,8 @@ const KnowledgeBaseHome = () => {
   return (
     <Layout style={{ background: '#fff', height: 'calc(100vh - 104px)' }}>
       {/* 左侧文档列表区域 */}
-      <Content style={{ width: chatVisible ? '60%' : '100%', paddingRight: chatVisible ? '20px' : '0', overflowY: 'auto' }}>
-        <Card>
+      <Content style={{ width: chatVisible ? '54%' : '100%',padding: '20px', background: '##f8f8f8', paddingRight: chatVisible ? '20px' : '0', overflowY: 'auto' }}>
+
           <div style={{ marginBottom: '16px' }}>
             <Title level={4} style={{ marginBottom: '16px' }}>我的文档</Title>
             
@@ -399,7 +399,7 @@ const KnowledgeBaseHome = () => {
           <div style={{ minHeight: '300px' }}>
             {renderDocumentContent()}
           </div>
-        </Card>
+        
       </Content>
       
       {/* 右侧聊天区域，使用封装的聊天组件 */}
@@ -408,7 +408,7 @@ const KnowledgeBaseHome = () => {
         onClose={() => setChatVisible(false)}
         documentId={selectedDocumentId}
         documentTitle={selectedDocumentTitle}
-        width="40%"
+        width="46%"
       />
     </Layout>
   );

@@ -27,9 +27,9 @@ const DataAnalysisLayout = () => {
   // 侧边栏菜单项
   const menuItems = [
     {
-      key: '/data-analysis',
-      icon: <DatabaseOutlined />,
-      label: '我的数据',
+      key: '/data-analysis/dashboards',
+      icon: <DashboardOutlined />,
+      label: '仪表盘',
     },
     {
       key: '/data-analysis/analysis',
@@ -37,10 +37,12 @@ const DataAnalysisLayout = () => {
       label: '数据分析',
     },
     {
-      key: '/data-analysis/dashboards',
-      icon: <DashboardOutlined />,
-      label: '可视化面板',
-    }
+      key: '/data-analysis',
+      icon: <DatabaseOutlined />,
+      label: '我的数据',
+    },
+ 
+   
   ];
   
   // 根据当前路径获取默认选中的菜单项

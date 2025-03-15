@@ -68,3 +68,20 @@
   background: #fff;
   min-height: 70vh;
 }
+
+body {
+  scrollbar-width: thin;  /* Firefox */
+  scrollbar-color: transparent transparent;  /* Firefox */
+}
+
+body::-webkit-scrollbar {
+  width: 0px;  /* Chrome, Safari, Opera */
+}
+
+body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+body::-webkit-scrollbar-thumb {
+  background: transparent;
+}

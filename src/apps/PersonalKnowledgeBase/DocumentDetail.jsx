@@ -135,7 +135,7 @@ const DocumentDetail = () => {
     return (
       <div style={{ padding: '16px', background: '#f9f9f9', borderRadius: '8px', marginTop: '16px' }}>
         {/* 设置一个固定高度的容器，内部使用iframe嵌入HTML脑图 */}
-        <div style={{ width: '100%', height: '500px', overflow: 'hidden', borderRadius: '8px' }}>
+        <div style={{ width: '100%', height: '800px', overflow: 'hidden', borderRadius: '8px' }}>
           <iframe 
             srcDoc={`
               <!DOCTYPE html>
