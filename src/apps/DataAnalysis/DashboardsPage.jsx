@@ -142,29 +142,7 @@ const DashboardsPage = () => {
     }
   };
   
-  // 查看仪表板详情
-  const viewDashboardDetail = async (dashboardId) => {
-    try {
-      setDashboardDetailLoading(true);
-      setDashboardDetailVisible(true);
-      
-      const response = await dtaAPI.getBIPageDetail(dashboardId);
-      
-      if (response.code === 200) {
-        setCurrentDashboard(response.data);
-      } else {
-        message.error(response.message || '获取仪表板详情失败');
-        setDashboardDetailVisible(false);
-      }
-    } catch (error) {
-      message.error('获取仪表板详情失败');
-      console.error('获取仪表板详情失败:', error);
-      setDashboardDetailVisible(false);
-    } finally {
-      setDashboardDetailLoading(false);
-    }
-  };
-  
+
   // 格式化日期
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -237,7 +215,7 @@ const DashboardsPage = () => {
             <Button 
               type="text" 
               icon={<EyeOutlined />} 
-              onClick={() => viewDashboardDetail(record.id)}
+              onClick={() => navigate(`/data-analysis/dashboard/${record.id}`)}
             />
           </Tooltip>
           
@@ -310,74 +288,6 @@ const DashboardsPage = () => {
   );
   
   // 仪表板详情模态框
-  const renderDashboardDetailModal = () => {
-    if (!currentDashboard) return null;
-    
-    return (
-      <Modal
-        title={`仪表板：${currentDashboard.pageName}`}
-        open={dashboardDetailVisible}
-        onCancel={() => setDashboardDetailVisible(false)}
-        footer={[
-          <Button key="close" onClick={() => setDashboardDetailVisible(false)}>
-            关闭
-          </Button>,
-          <Button 
-            key="view" 
-            type="primary" 
-            onClick={() => navigate(`/data-analysis/dashboard/${currentDashboard.id}`)}
-          >
-            查看完整仪表板
-          </Button>
-        ]}
-        width={800}
-      >
-        {dashboardDetailLoading ? (
-          <div style={{ textAlign: 'center', padding: '40px 0' }}>
-            <Spin />
-          </div>
-        ) : (
-          <div>
-            <div style={{ marginBottom: '16px' }}>
-              <Text type="secondary">
-                {currentDashboard.description || '暂无描述'}
-              </Text>
-            </div>
-            
-            <Title level={5}>图表组件 ({currentDashboard.componentCount || 0})</Title>
-            
-            {!currentDashboard.components || currentDashboard.components.length === 0 ? (
-              <Empty description="暂无图表组件" />
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
-                {currentDashboard.components.map((component, index) => (
-                  <Card 
-                    key={index} 
-                    size="small" 
-                    title={component.title || '未命名组件'}
-                    style={{ height: '250px', overflow: 'hidden' }}
-                  >
-                    <div style={{ height: '180px', overflow: 'hidden' }}>
-                      {component.visualization ? (
-                        <iframe
-                          srcDoc={component.visualization}
-                          style={{ width: '100%', height: '100%', border: 'none' }}
-                          title={component.title}
-                          sandbox="allow-scripts"
-                        />
-                      ) : (
-                        <Empty description="无可视化内容" />
-                      )}
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </Modal>
-    );
-  };
   
   return (
     <div>
@@ -444,7 +354,7 @@ const DashboardsPage = () => {
       </Card>
       
       {renderCreateModal()}
-      {renderDashboardDetailModal()}
+
     </div>
   );
 };

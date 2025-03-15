@@ -6,7 +6,6 @@ import {
   Typography,
   Empty,
   Spin,
-  Table,
   Tabs,
   Button,
   Tooltip,
@@ -28,17 +27,11 @@ import {
 import { useParams, useNavigate } from 'react-router-dom';
 import dtaAPI from '../../api/dtaAPI';
 
-const { Title, Text } = Typography;
+// 导入我们封装的可视化组件和工具
+import { VisualizationRenderer } from './components/ChartComponents'; 
+import { buildVisualization } from './utils/visualizationUtils';
 
-// 解析JSON字符串，安全方式
-const safeJsonParse = (jsonString) => {
-  try {
-    return JSON.parse(jsonString);
-  } catch (error) {
-    console.error("JSON解析错误:", error);
-    return null;
-  }
-};
+const { Title, Text } = Typography;
 
 const DashboardDetailPage = () => {
   const { dashboardId } = useParams();
@@ -47,12 +40,15 @@ const DashboardDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [dashboardData, setDashboardData] = useState(null);
   const [error, setError] = useState(null);
+  const [refreshingComponents, setRefreshingComponents] = useState({});
 
+  // 首次加载时获取仪表盘数据
   useEffect(() => {
+    console.log('初始化加载仪表盘数据...');
     fetchDashboardData();
   }, [dashboardId]);
 
-  // 获取仪表盘数据
+  // 获取仪表盘数据，并在获取完成后自动刷新组件
   const fetchDashboardData = async () => {
     if (!dashboardId) {
       setError("未指定仪表盘ID");
@@ -62,10 +58,49 @@ const DashboardDetailPage = () => {
     
     try {
       setLoading(true);
+      console.log('开始获取仪表盘数据...');
       const response = await dtaAPI.getBIPageDetail(dashboardId);
       
       if (response.code === 200) {
+        console.log('仪表盘数据获取成功，组件数量:', response.data.components?.length || 0);
+        
+        // 存储获取到的仪表盘数据
         setDashboardData(response.data);
+        
+        // 准备刷新组件数据
+        if (response.data && response.data.components && response.data.components.length > 0) {
+          console.log('开始刷新组件数据...');
+          
+          // 创建需要刷新的组件列表
+          const componentsToRefresh = {};
+          
+          // 开始分别刷新每个组件
+          for (const component of response.data.components) {
+            if (component.sqlExecutionId) {
+              componentsToRefresh[component.sqlExecutionId] = true;
+            }
+          }
+          
+          // 更新所有组件的刷新状态
+          if (Object.keys(componentsToRefresh).length > 0) {
+            setRefreshingComponents(componentsToRefresh);
+          }
+          
+          // 调用刷新接口
+          for (const component of response.data.components) {
+            if (component.sqlExecutionId) {
+              // 为每个组件单独调用刷新接口
+              try {
+                console.log(`刷新组件 ID: ${component.sqlExecutionId}`);
+                await refreshComponentData(component.sqlExecutionId);
+              } catch (error) {
+                console.error(`组件 ${component.sqlExecutionId} 刷新失败:`, error);
+              }
+            }
+          }
+          
+          console.log('所有组件刷新完成');
+        }
       } else {
         setError(response.message || "获取仪表盘数据失败");
       }
@@ -76,67 +111,79 @@ const DashboardDetailPage = () => {
       setLoading(false);
     }
   };
-
-  // 解析组件配置
-  const parseComponentConfig = (component) => {
-    try {
-      if (component.componentConfig) {
-        return safeJsonParse(component.componentConfig);
-      }
-    } catch (error) {
-      console.error("解析组件配置出错:", error);
-    }
-    return null;
-  };
   
-  // 刷新组件数据
+  // 刷新单个组件数据
   const refreshComponentData = async (sqlExecutionId) => {
     if (!sqlExecutionId) return;
     
     try {
-      message.loading("正在刷新数据...");
+      setRefreshingComponents(prev => ({ ...prev, [sqlExecutionId]: true }));
+      
       const response = await dtaAPI.refreshChartData(sqlExecutionId);
       
       if (response.code === 200) {
-        message.success("数据已刷新");
+        console.log(`组件 ID ${sqlExecutionId} 数据刷新成功`);
         
         // 更新组件数据
-        if (dashboardData && dashboardData.components) {
-          setDashboardData(prev => {
-            const updatedComponents = prev.components.map(component => {
-              if (component.sqlExecutionId === sqlExecutionId) {
-                return {
-                  ...component,
-                  visualization: response.data.visualization,
-                  dataJson: response.data.dataJson
-                };
-              }
-              return component;
-            });
-            
-            return {
-              ...prev,
-              components: updatedComponents
-            };
+        setDashboardData(prev => {
+          if (!prev || !prev.components) return prev;
+          
+          const updatedComponents = prev.components.map(component => {
+            if (component.sqlExecutionId === sqlExecutionId) {
+              return {
+                ...component,
+                visualization: response.data.visualization,
+                dataJson: response.data.dataJson
+              };
+            }
+            return component;
           });
-        }
+          
+          return {
+            ...prev,
+            components: updatedComponents
+          };
+        });
       } else {
+        console.error(`组件 ID ${sqlExecutionId} 数据刷新失败:`, response.message);
         message.error(response.message || "刷新数据失败");
       }
     } catch (error) {
-      message.error("刷新数据失败");
-      console.error("刷新数据失败:", error);
+      console.error(`组件 ID ${sqlExecutionId} 数据刷新错误:`, error);
+    } finally {
+      setRefreshingComponents(prev => ({ ...prev, [sqlExecutionId]: false }));
     }
   };
   
   // 全屏查看组件
   const viewFullscreen = (component) => {
+    // 解析组件数据
+    let parsedData = [];
+    try {
+      if (component.dataJson) {
+        parsedData = JSON.parse(component.dataJson);
+      }
+    } catch (error) {
+      console.error('解析数据失败:', error);
+    }
+    
+    // 获取可视化配置
+    const { type, config } = buildVisualization(component);
+    
     Modal.info({
       title: component.componentName || "组件详情",
       width: '80%',
       content: (
         <div style={{ height: '500px', padding: '20px 0' }}>
-          {renderComponent(component)}
+          {parsedData.length > 0 ? (
+            <VisualizationRenderer
+              data={parsedData}
+              type={type}
+              config={config}
+            />
+          ) : (
+            <Empty description="无数据可显示" />
+          )}
         </div>
       ),
       okText: '关闭',
@@ -144,293 +191,67 @@ const DashboardDetailPage = () => {
     });
   };
 
-  // 渲染组件配置信息
-  const renderConfigInfo = (component) => {
-    // 尝试从组件配置中获取列信息
-    const configObj = parseComponentConfig(component);
-    
-    if (!configObj || !configObj.config) return null;
-    
-    return (
-      <div style={{ marginBottom: '16px', textAlign: 'left' }}>
-        {configObj.config.columns && (
-          <div style={{ marginBottom: '8px' }}>
-            <Text strong>数据列: </Text>
-            {configObj.config.columns.map((col, index) => (
-              <Tag key={index}>{col}</Tag>
-            ))}
-          </div>
-        )}
-        
-        {configObj.config.rows && Array.isArray(configObj.config.rows) && configObj.config.rows.length > 0 && (
-          <div style={{ marginTop: '8px' }}>
-            <Text strong>预配置数据行: </Text>
-            <Text>{configObj.config.rows.length} 行</Text>
-          </div>
-        )}
-        
-        {/* 渲染其他配置属性 */}
-        {Object.entries(configObj.config)
-          .filter(([key]) => key !== 'columns' && key !== 'rows')
-          .map(([key, value]) => (
-            <div key={key} style={{ marginTop: '8px' }}>
-              <Text strong>{key}: </Text>
-              <Text>{typeof value === 'object' ? JSON.stringify(value) : value.toString()}</Text>
-            </div>
-          ))
-        }
-      </div>
-    );
-  };
-
-  // 渲染表格
-  const renderTable = (data, title, sqlExecutionId) => {
-    if (!data || data.length === 0) return <Empty description="暂无数据" />;
-    
-    // 从第一行数据获取列
-    const columns = Object.keys(data[0]).map(key => ({
-      title: key,
-      dataIndex: key,
-      key,
-      render: (text) => text === null ? '-' : text.toString()
-    }));
-    
-    return (
-      <div>
-        <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'flex-end' }}>
-          <Space>
-            <Tooltip title="刷新数据">
-              <Button 
-                size="small" 
-                icon={<ReloadOutlined />}
-                onClick={() => refreshComponentData(sqlExecutionId)}
-              />
-            </Tooltip>
-          </Space>
-        </div>
-        
-        <Table
-          columns={columns}
-          dataSource={data}
-          rowKey={(record, index) => index}
-          pagination={{ pageSize: 5, showSizeChanger: true }}
-          size="small"
-          bordered
-          scroll={{ x: 'max-content' }}
-        />
-      </div>
-    );
-  };
-  
-  // 渲染表格（基于组件配置）
-  const renderTableFromConfig = (component) => {
-    const configObj = parseComponentConfig(component);
-    if (!configObj || !configObj.config) {
-      return <Empty description="无效的表格配置" />;
-    }
-    
-    const { columns, rows = [] } = configObj.config;
-    
-    if (!columns || !Array.isArray(columns) || columns.length === 0) {
-      return <Empty description="无表格列配置" />;
-    }
-    
-    // 创建表格列定义
-    const tableColumns = columns.map((col, index) => ({
-      title: col,
-      dataIndex: col,
-      key: index,
-      render: (text) => text === null ? '-' : text.toString()
-    }));
-    
-    // 如果有预设的数据行，创建对应的数据源
-    const dataSource = rows.map((row, index) => {
-      const rowData = {};
-      // 确保行数据与列对应
-      columns.forEach((col, colIndex) => {
-        rowData[col] = row[colIndex] || null;
-      });
-      return { ...rowData, key: index };
-    });
-    
-    return (
-      <div>
-        <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'flex-end' }}>
-          <Space>
-            <Tooltip title="刷新数据">
-              <Button 
-                size="small" 
-                icon={<ReloadOutlined />}
-                onClick={() => refreshComponentData(component.sqlExecutionId)}
-              />
-            </Tooltip>
-          </Space>
-        </div>
-        
-        {dataSource.length > 0 ? (
-          <Table
-            columns={tableColumns}
-            dataSource={dataSource}
-            pagination={{ pageSize: 5, showSizeChanger: true }}
-            size="small"
-            bordered
-            scroll={{ x: 'max-content' }}
-          />
-        ) : (
-          <div style={{ padding: '20px 0', textAlign: 'center' }}>
-            <Empty description={
-              <div>
-                <div>表格配置包含以下列：</div>
-                <div style={{ marginTop: '8px' }}>
-                  {columns.map((col, index) => (
-                    <Tag key={index}>{col}</Tag>
-                  ))}
-                </div>
-                <div style={{ marginTop: '8px' }}>暂无数据行</div>
-              </div>
-            } />
-          </div>
-        )}
-      </div>
-    );
-  };
-  
-  // 渲染可视化图表
-  const renderVisualization = (chartType, chartIcon, data, title, sqlExecutionId, component) => {
-    // 如果有visualization字段且包含htmlUrl，则显示iframe
-    if (component.visualization && component.visualization.htmlUrl) {
-      return (
-        <div>
-          <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'flex-end' }}>
-            <Space>
-              <Tooltip title="刷新数据">
-                <Button 
-                  size="small" 
-                  icon={<ReloadOutlined />}
-                  onClick={() => refreshComponentData(sqlExecutionId)}
-                />
-              </Tooltip>
-            </Space>
-          </div>
-          
-          <iframe
-            src={`http://106.75.71.65:57460${component.visualization.htmlUrl}`}
-            style={{ width: '100%', height: '300px', border: 'none', borderRadius: '4px' }}
-            title={title}
-            sandbox="allow-scripts allow-same-origin"
-          />
-        </div>
-      );
-    }
-    
-    // 如果没有可视化URL，则显示简单的数据表示
-    return (
-      <div>
-        <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'flex-end' }}>
-          <Space>
-            <Tooltip title="刷新数据">
-              <Button 
-                size="small" 
-                icon={<ReloadOutlined />}
-                onClick={() => refreshComponentData(sqlExecutionId)}
-              />
-            </Tooltip>
-          </Space>
-        </div>
-        
-        <div style={{ height: '300px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#f5f5f5', borderRadius: '4px' }}>
-          {chartIcon === 'pie' && <PieChartOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />}
-          {chartIcon === 'line' && <LineChartOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />}
-          {chartIcon === 'bar' && <BarChartOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />}
-          {chartIcon === 'scatter' && <DotChartOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />}
-          
-          <Text strong>{chartType}可视化: {title}</Text>
-          
-          <div style={{ marginTop: '16px', width: '80%' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-              <thead>
-                <tr>
-                  {Object.keys(data[0]).map((key, index) => (
-                    <th key={index} style={{ border: '1px solid #ddd', padding: '4px 8px', background: '#f0f0f0' }}>{key}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.slice(0, 3).map((row, rowIndex) => (
-                  <tr key={rowIndex}>
-                    {Object.values(row).map((value, colIndex) => (
-                      <td key={colIndex} style={{ border: '1px solid #ddd', padding: '4px 8px' }}>{value}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            {data.length > 3 && (
-              <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '12px', color: '#888' }}>
-                显示前3条数据（共{data.length}条）
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
+  // 渲染组件
   const renderComponent = (component) => {
     const { componentName, sqlExecutionId } = component;
+    const isRefreshing = refreshingComponents[sqlExecutionId] || false;
     
-    // 获取组件实际类型
-    const config = parseComponentConfig(component);
-    const chartType = config?.type || 'table'; // 默认为表格
-    
-    // 如果组件已经有数据，使用已有数据
-    if (component.dataJson) {
-      try {
-        const data = safeJsonParse(component.dataJson);
-        
-        if (data && Array.isArray(data) && data.length > 0) {
-          // 根据组件类型渲染不同的可视化
-          switch (chartType) {
-            case 'table':
-              return renderTable(data, componentName, sqlExecutionId);
-            case 'pie':
-              return renderVisualization('饼图', 'pie', data, componentName, sqlExecutionId, component);
-            case 'line':
-              return renderVisualization('折线图', 'line', data, componentName, sqlExecutionId, component);
-            case 'bar':
-              return renderVisualization('柱状图', 'bar', data, componentName, sqlExecutionId, component);
-            case 'scatter':
-              return renderVisualization('散点图', 'scatter', data, componentName, sqlExecutionId, component);
-            default:
-              return renderTable(data, componentName, sqlExecutionId);
-          }
-        }
-      } catch (err) {
-        console.error("解析组件数据出错:", err);
+    // 解析数据
+    let parsedData = [];
+    try {
+      if (component.dataJson) {
+        parsedData = JSON.parse(component.dataJson);
       }
+    } catch (error) {
+      console.error('解析数据失败:', error);
     }
     
-    // 如果是表格类型，直接从配置渲染
-    if (chartType === 'table') {
-      return renderTableFromConfig(component);
-    }
-    
-    // 对于其他图表类型，显示配置信息和刷新按钮
-    return (
-      <div style={{ padding: '40px 0', textAlign: 'center' }}>
-        {renderConfigInfo(component)}
-        <Empty 
-          description="暂无图表数据，点击刷新获取数据" 
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        >
+    // 如果没有数据
+    if (!parsedData || parsedData.length === 0) {
+      return (
+        <div style={{ padding: '40px 0', textAlign: 'center' }}>
+          <Empty 
+            description={
+              isRefreshing ? "正在加载数据..." : "暂无数据"
+            } 
+          />
           <Button 
             type="primary" 
             icon={<ReloadOutlined />}
             onClick={() => refreshComponentData(sqlExecutionId)}
+            loading={isRefreshing}
+            style={{ marginTop: '16px' }}
           >
             刷新数据
           </Button>
-        </Empty>
+        </div>
+      );
+    }
+    
+    // 获取可视化配置
+    const { type, config } = buildVisualization(component);
+    
+    return (
+      <div>
+        <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'flex-end' }}>
+          <Space>
+            <Tooltip title="刷新数据">
+              <Button 
+                size="small" 
+                icon={<ReloadOutlined />}
+                onClick={() => refreshComponentData(sqlExecutionId)}
+                loading={isRefreshing}
+              />
+            </Tooltip>
+          </Space>
+        </div>
+        
+        <VisualizationRenderer
+          data={parsedData}
+          type={type}
+          config={config}
+          loading={isRefreshing}
+        />
       </div>
     );
   };
@@ -449,18 +270,17 @@ const DashboardDetailPage = () => {
     
     dashboardData.components.forEach(component => {
       // 解析组件配置，获取真正的图表类型
-      const config = parseComponentConfig(component);
-      const chartType = config?.type || 'table'; // 默认为表格
+      const { type } = buildVisualization(component);
       
-      if (chartType === 'table') {
+      if (type === 'table') {
         typeGroups.tables.push(component);
-      } else if (chartType === 'line') {
+      } else if (type === 'line') {
         typeGroups.lineCharts.push(component);
-      } else if (chartType === 'bar') {
+      } else if (type === 'bar') {
         typeGroups.barCharts.push(component);
-      } else if (chartType === 'pie') {
+      } else if (type === 'pie') {
         typeGroups.pieCharts.push(component);
-      } else if (chartType === 'scatter') {
+      } else if (type === 'scatter') {
         typeGroups.scatterCharts.push(component);
       } else {
         // 未知类型默认放入表格组
@@ -552,11 +372,10 @@ const DashboardDetailPage = () => {
                       <div>
                         {(() => {
                           // 解析组件配置，获取真正的图表类型
-                          const config = parseComponentConfig(component);
-                          const chartType = config?.type || 'table';
+                          const { type } = buildVisualization(component);
                           
                           // 根据图表类型显示对应图标
-                          switch(chartType) {
+                          switch(type) {
                             case 'table': return <TableOutlined style={{ marginRight: '8px' }} />;
                             case 'pie': return <PieChartOutlined style={{ marginRight: '8px' }} />;
                             case 'line': return <LineChartOutlined style={{ marginRight: '8px' }} />;

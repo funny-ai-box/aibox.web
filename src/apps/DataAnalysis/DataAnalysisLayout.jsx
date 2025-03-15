@@ -2,10 +2,12 @@ import React from 'react';
 import { Layout, Button, Typography, Menu } from 'antd';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
-  HomeOutlined,
+  StepBackwardOutlined,
+  LeftOutlined  ,
   DatabaseOutlined,
   LineChartOutlined,
-  DashboardOutlined
+  DashboardOutlined,
+  LeftCircleFilled
 } from '@ant-design/icons';
 
 const { Header, Content, Sider } = Layout;
@@ -69,7 +71,7 @@ const DataAnalysisLayout = () => {
       }}>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <Link to="/">
-            <Button type="primary" shape="circle" icon={<HomeOutlined />} style={{ marginRight: '16px' }} />
+            <Button type="primary" shape="circle" icon={<LeftOutlined />} style={{ marginRight: '16px' }} />
           </Link>
           <Title level={3} style={{ margin: 0 }}>数据分析助手</Title>
         </div>
