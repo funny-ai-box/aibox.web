@@ -56,7 +56,7 @@ const dtaAPI = {
   getFileData: (fileId, sheetName) => {
     return http.post('/dta/files/datas', { 
       Id: fileId,
-
+      Query: sheetName || ''  // 确保Query字段有值
     });
   },
   
@@ -92,7 +92,7 @@ const dtaAPI = {
    * @param {number} pageSize - 每页数量
    * @returns {Promise} - 请求Promise
    */
-  getChatSessionsList: (pageIndex = 1, pageSize = 20) => {
+  getChatSessionsList: (pageIndex = 1, pageSize = 50) => {
     return http.post('/dta/chat/sessions/list', {
       PageIndex: pageIndex,
       PageSize: pageSize
@@ -117,7 +117,8 @@ const dtaAPI = {
   sendChatMessage: (sessionId, message) => {
     return http.post('/dta/chat/sessions/conversation', {
       SessionId: sessionId,
-      Message: message
+      Message: message,
+      Query: message // 添加Query字段，值与Message相同
     });
   },
   
@@ -129,9 +130,10 @@ const dtaAPI = {
   getChatHistory: (sessionId) => {
     return http.post('/dta/chat/sessions/conversation/history', {
       SessionId: sessionId,
+      Query: " ", // 确保Query字段有值
       Page: {
             "PageIndex": 1,
-            "PageSize": 20
+            "PageSize": 50
         }
     });
   },
@@ -143,7 +145,8 @@ const dtaAPI = {
    */
   refreshChartData: (sqlExecutionId) => {
     return http.post('/dta/chat/sessions/conversation/refreshdata', {
-      Id: sqlExecutionId
+      Id: sqlExecutionId,
+      Query: " " // 确保Query字段有值
     });
   },
   
@@ -158,7 +161,8 @@ const dtaAPI = {
     return http.post('/dta/pages/create', {
       PageName: pageName,
       Description: description,
-      IsPublic: isPublic
+      IsPublic: isPublic,
+      Query: pageName // 添加Query字段，值与PageName相同
     });
   },
   
@@ -173,9 +177,10 @@ const dtaAPI = {
   addSqlDataToPage: (pageId, sqlExecutionId, title, description = '') => {
     return http.post('/dta/pages/addsqldata', {
       PageId: pageId,
-      SqlExecutionId: sqlExecutionId,
+      SqlExecutionIds: [sqlExecutionId],
       Title: title,
-      Description: description
+      Description: description,
+      Query: title // 添加Query字段，值与Title相同
     });
   },
   
@@ -185,7 +190,10 @@ const dtaAPI = {
    * @returns {Promise} - 请求Promise
    */
   getBIPageDetail: (pageId) => {
-    return http.post('/dta/pages/dtl', { Id: pageId });
+    return http.post('/dta/pages/dtl', { 
+      Id: pageId,
+      Query: " " // 确保Query字段有值
+    });
   },
   
   /**
@@ -197,7 +205,8 @@ const dtaAPI = {
   getBIPagesList: (pageIndex = 1, pageSize = 20) => {
     return http.post('/dta/pages/list', {
       PageIndex: pageIndex,
-      PageSize: pageSize
+      PageSize: pageSize,
+      Query: " " // 确保Query字段有值
     });
   },
   
@@ -207,7 +216,22 @@ const dtaAPI = {
    * @returns {Promise} - 请求Promise
    */
   deleteBIPage: (pageId) => {
-    return http.post('/dta/pages/delete', { Id: pageId });
+    return http.post('/dta/pages/delete', { 
+      Id: pageId,
+      Query: " " // 确保Query字段有值
+    });
+  },
+  
+  /**
+   * 删除会话（目前API尚未实现，预留接口）
+   * @param {number} sessionId - 会话ID
+   * @returns {Promise} - 请求Promise 
+   */
+  deleteChatSession: (sessionId) => {
+    return http.post('/dta/chat/sessions/delete', {
+      Id: sessionId,
+      Query: " " // 确保Query字段有值
+    });
   }
 };
 

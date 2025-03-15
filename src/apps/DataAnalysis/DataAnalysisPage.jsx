@@ -18,7 +18,8 @@ import {
   Tag,
   Row,
   Col,
-  Divider
+  Divider,
+  Table
 } from 'antd';
 import {
   MessageOutlined,
@@ -194,7 +195,7 @@ const DataAnalysisPage = () => {
       
       if (response.code === 200) {
         // 构建聊天消息格式
-        const history = response.data.conversations || [];
+        const history = response.data.items || [];
         const formattedMessages = [];
         
         history.forEach(conv => {
@@ -202,20 +203,27 @@ const DataAnalysisPage = () => {
           formattedMessages.push({
             id: `user-${conv.id}`,
             role: 'user',
-            content: conv.userMessage,
+            content: conv.userQuery,
             timestamp: new Date(conv.createTime).toLocaleString()
           });
           
           // AI回复
-          if (conv.aiMessage) {
+          if (conv.aiResponse) {
             formattedMessages.push({
               id: `ai-${conv.id}`,
               role: 'assistant',
-              content: conv.aiMessage,
+              content: conv.aiResponse,
               timestamp: new Date(conv.createTime).toLocaleString(),
               sqlExecutions: conv.sqlExecutions || [] // 包含SQL执行结果
             });
           }
+        });
+        
+        // 按时间顺序排列消息
+        formattedMessages.sort((a, b) => {
+          const timeA = new Date(a.timestamp);
+          const timeB = new Date(b.timestamp);
+          return timeA - timeB;
         });
         
         setChatMessages(formattedMessages);
@@ -230,7 +238,7 @@ const DataAnalysisPage = () => {
     }
   };
   
-  // 发送消息
+  // 发送消息 - 更新为非流式API
   const sendMessage = async () => {
     if (!inputValue.trim() || !selectedSession) return;
     
@@ -247,6 +255,7 @@ const DataAnalysisPage = () => {
     setSendingMessage(true);
     
     try {
+      // 发送请求到API
       const response = await dtaAPI.sendChatMessage(
         selectedSession.id,
         inputValue
@@ -259,9 +268,10 @@ const DataAnalysisPage = () => {
         const aiMessage = {
           id: `ai-${Date.now()}`,
           role: 'assistant',
-          content: aiResponse.aiMessage || '对不起，我无法分析您的请求。',
+          content: aiResponse.response || '对不起，我无法分析您的请求。',
           timestamp: new Date().toLocaleString(),
-          sqlExecutions: aiResponse.sqlExecutions || []
+          sqlExecutions: aiResponse.sqlExecutions || [],
+          conversationId: aiResponse.conversationId
         };
         
         setChatMessages(prev => [...prev, aiMessage]);
@@ -507,7 +517,7 @@ const DataAnalysisPage = () => {
     }
     
     // 如果有可视化配置，渲染图表
-    if (visualization) {
+    if (visualization && visualization.htmlUrl) {
       return (
         <div>
           <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -523,8 +533,24 @@ const DataAnalysisPage = () => {
               <Tooltip title="查看SQL">
                 <Button
                   size="small"
-                  icon={<QuestionCircleOutlined />}
-                  onClick={() => message.info(`SQL: ${sqlStatement}`)}
+                  icon={<InfoCircleOutlined />}
+                  onClick={() => Modal.info({
+                    title: 'SQL语句',
+                    content: (
+                      <div>
+                        <pre style={{ 
+                          whiteSpace: 'pre-wrap', 
+                          wordBreak: 'break-all', 
+                          backgroundColor: '#f5f5f5', 
+                          padding: '10px',
+                          borderRadius: '4px' 
+                        }}>
+                          {sqlStatement}
+                        </pre>
+                      </div>
+                    ),
+                    width: 600,
+                  })}
                 >
                   查看SQL
                 </Button>
@@ -544,10 +570,10 @@ const DataAnalysisPage = () => {
           {/* 渲染HTML可视化（使用iFrame保证安全） */}
           <div style={{ border: '1px solid #f0f0f0', borderRadius: '4px', overflow: 'hidden' }}>
             <iframe
-              srcDoc={visualization}
+              src={`http://106.75.71.65:57460${visualization.htmlUrl}`}
               style={{ width: '100%', height: '400px', border: 'none' }}
               title="Visualization"
-              sandbox="allow-scripts"
+              sandbox="allow-scripts allow-same-origin"
             />
           </div>
         </div>
@@ -564,6 +590,7 @@ const DataAnalysisPage = () => {
         key,
         render: (text) => {
           if (text === null || text === undefined) return '-';
+          if (typeof text === 'object' && text instanceof Date) return text.toLocaleString();
           return text.toString();
         }
       }));
@@ -583,51 +610,49 @@ const DataAnalysisPage = () => {
               <Tooltip title="查看SQL">
                 <Button
                   size="small"
-                  icon={<QuestionCircleOutlined />}
-                  onClick={() => message.info(`SQL: ${sqlStatement}`)}
+                  icon={<InfoCircleOutlined />}
+                  onClick={() => Modal.info({
+                    title: 'SQL语句',
+                    content: (
+                      <div>
+                        <pre style={{ 
+                          whiteSpace: 'pre-wrap', 
+                          wordBreak: 'break-all', 
+                          backgroundColor: '#f5f5f5', 
+                          padding: '10px',
+                          borderRadius: '4px' 
+                        }}>
+                          {sqlStatement}
+                        </pre>
+                      </div>
+                    ),
+                    width: 600,
+                  })}
                 >
                   查看SQL
                 </Button>
               </Tooltip>
             </Space>
+            
+            <Button
+              type="primary"
+              size="small"
+              icon={<SaveOutlined />}
+              onClick={() => openSaveToDashboardModal(sqlExecution)}
+            >
+              保存到仪表板
+            </Button>
           </div>
           
-          <div style={{ maxHeight: '400px', overflow: 'auto', border: '1px solid #f0f0f0', borderRadius: '4px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  {columns.map(col => (
-                    <th 
-                      key={col.key} 
-                      style={{ 
-                        padding: '8px', 
-                        borderBottom: '1px solid #f0f0f0',
-                        background: '#fafafa',
-                        position: 'sticky',
-                        top: 0
-                      }}
-                    >
-                      {col.title}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {parsedData.map((row, rowIndex) => (
-                  <tr key={rowIndex}>
-                    {columns.map(col => (
-                      <td 
-                        key={`${rowIndex}-${col.key}`} 
-                        style={{ padding: '8px', borderBottom: '1px solid #f0f0f0' }}
-                      >
-                        {col.render(row[col.dataIndex])}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table
+            columns={columns}
+            dataSource={parsedData}
+            rowKey={(record, index) => index}
+            pagination={{ pageSize: 5 }}
+            size="small"
+            scroll={{ x: 'max-content' }}
+            bordered
+          />
         </div>
       );
     }
