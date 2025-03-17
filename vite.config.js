@@ -11,4 +11,14 @@ export default defineConfig({
       
     },
   },
+  server: {
+    proxy: {
+      // 配置代理
+      '/api': {
+        target: 'http://106.75.71.65:57460',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, '/api')
+      }
+    }
+  }
 })
