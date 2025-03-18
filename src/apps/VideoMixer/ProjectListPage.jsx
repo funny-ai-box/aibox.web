@@ -230,7 +230,7 @@ const ProjectListPage = () => {
       width: 220,
       render: (_, record) => (
         <Space size="small">
-          {record.status === 0 ? (
+          {record.status === 0 || record.status === 1 ? (
             <Tooltip title="编辑项目">
               <Button 
                 type="primary" 

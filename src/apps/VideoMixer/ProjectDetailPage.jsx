@@ -67,9 +67,7 @@ const ProjectDetailPage = () => {
         setProject(response.data);
         
         // 如果项目状态不是6（完成）且没有错误，启动进度轮询
-        if (response.data.status !== 6 && !response.data.errorMessage) {
-          startProgressPolling();
-        }
+   
       } else {
         message.error(response.message || '获取项目详情失败');
       }

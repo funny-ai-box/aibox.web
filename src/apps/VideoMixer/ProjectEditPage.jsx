@@ -4,7 +4,6 @@ import {
   Button,
   Typography,
   Space,
-  Divider,
   Upload,
   List,
   Spin,
@@ -13,7 +12,10 @@ import {
   Progress,
   Alert,
   message,
-  Modal
+  Modal,
+  Tabs,
+  Tag,
+  Divider
 } from 'antd';
 import {
   UploadOutlined,
@@ -26,7 +28,9 @@ import {
   CheckCircleOutlined,
   LoadingOutlined,
   DeleteOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  PlusOutlined,
+  FileOutlined
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import videoMixerAPI from '../../api/videoMixerAPI';
@@ -34,6 +38,7 @@ import videoMixerAPI from '../../api/videoMixerAPI';
 const { Title, Text, Paragraph } = Typography;
 const { Dragger } = Upload;
 const { Step } = Steps;
+const { TabPane } = Tabs;
 
 // 视频/音频文件类型列表
 const VIDEO_FORMATS = ['.mp4', '.mov', '.avi', '.wmv', '.flv', '.mkv'];
@@ -48,23 +53,15 @@ const ProjectEditPage = () => {
   const [project, setProject] = useState(null);
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadingMusic, setUploadingMusic] = useState(false);
-  const [progressPolling, setProgressPolling] = useState(false);
-  const [pollingTimer, setPollingTimer] = useState(null);
   const [uploadedVideos, setUploadedVideos] = useState([]);
   const [startProcessing, setStartProcessing] = useState(false);
+  const [activeTab, setActiveTab] = useState("1");
   
   // 初始加载
   useEffect(() => {
     if (projectId) {
       fetchProjectDetails();
     }
-    
-    // 组件卸载时清除定时器
-    return () => {
-      if (pollingTimer) {
-        clearInterval(pollingTimer);
-      }
-    };
   }, [projectId]);
   
   // 获取项目详情
@@ -75,10 +72,9 @@ const ProjectEditPage = () => {
       
       if (response.code === 200) {
         setProject(response.data);
-        
-        // 如果项目状态大于0，表示已经开始处理，启动进度轮询
-        if (response.data.status > 0) {
-          startProgressPolling();
+        // 如果项目已经开始生成，自动切换到进度标签页
+        if (response.data.isGenerateLock === 1) {
+          setActiveTab("2");
         }
       } else {
         message.error(response.message || '获取项目详情失败');
@@ -89,49 +85,6 @@ const ProjectEditPage = () => {
     } finally {
       setLoading(false);
     }
-  };
-  
-  // 启动进度轮询
-  const startProgressPolling = () => {
-    if (pollingTimer) {
-      clearInterval(pollingTimer);
-    }
-    
-    setProgressPolling(true);
-    const timer = setInterval(async () => {
-      try {
-        const response = await videoMixerAPI.getProjectDetail(projectId);
-        
-        if (response.code === 200) {
-          setProject(response.data);
-          
-          // 如果处理已完成，停止轮询
-          if (response.data.status === 6) {
-            stopProgressPolling();
-            message.success('视频处理已完成！');
-          }
-          
-          // 如果处理失败，停止轮询
-          if (response.data.errorMessage) {
-            stopProgressPolling();
-            message.error(`处理失败: ${response.data.errorMessage}`);
-          }
-        }
-      } catch (error) {
-        console.error('轮询项目状态出错:', error);
-      }
-    }, 5000); // 每5秒轮询一次
-    
-    setPollingTimer(timer);
-  };
-  
-  // 停止进度轮询
-  const stopProgressPolling = () => {
-    if (pollingTimer) {
-      clearInterval(pollingTimer);
-      setPollingTimer(null);
-    }
-    setProgressPolling(false);
   };
   
   // 上传视频前检查
@@ -180,6 +133,12 @@ const ProjectEditPage = () => {
   
   // 处理视频上传
   const handleUploadVideo = async (file) => {
+    // 检查项目是否已锁定
+    if (project?.isGenerateLock === 1) {
+      message.error('项目已开始生成，无法上传视频');
+      return;
+    }
+    
     setUploadingVideo(true);
     try {
       const response = await videoMixerAPI.uploadVideo(projectId, file);
@@ -187,7 +146,8 @@ const ProjectEditPage = () => {
       if (response.code === 200) {
         message.success(`视频${file.name}上传成功`);
         setUploadedVideos(prev => [...prev, { name: file.name, id: Date.now() }]);
-        fetchProjectDetails(); // 刷新项目状态
+        // 刷新项目状态
+        fetchProjectDetails();
       } else {
         message.error(response.message || '上传视频失败');
       }
@@ -201,6 +161,12 @@ const ProjectEditPage = () => {
   
   // 处理音乐上传
   const handleUploadMusic = async (file) => {
+    // 检查项目是否已锁定
+    if (project?.isGenerateLock === 1) {
+      message.error('项目已开始生成，无法上传音乐');
+      return;
+    }
+    
     if (project?.backgroundMusicType !== 3) {
       message.error('当前项目不支持上传背景音乐');
       return;
@@ -212,7 +178,8 @@ const ProjectEditPage = () => {
       
       if (response.code === 200) {
         message.success(`音乐${file.name}上传成功`);
-        fetchProjectDetails(); // 刷新项目状态
+        // 刷新项目状态
+        fetchProjectDetails();
       } else {
         message.error(response.message || '上传音乐失败');
       }
@@ -239,8 +206,10 @@ const ProjectEditPage = () => {
           
           if (response.code === 200) {
             message.success('视频开始生成，请耐心等待');
-            startProgressPolling();
-            fetchProjectDetails(); // 刷新项目状态
+            // 刷新项目状态
+            fetchProjectDetails();
+            // 切换到进度标签页
+            setActiveTab("2");
           } else {
             message.error(response.message || '开始生成视频失败');
           }
@@ -307,6 +276,12 @@ const ProjectEditPage = () => {
                  project.backgroundMusicType === 3 ? '上传音乐文件' : '未知'}
               </Text>
             </Space>
+            
+            {project.isGenerateLock === 1 && (
+              <div style={{ marginTop: '8px' }}>
+                <Tag color="processing">正在处理中</Tag>
+              </div>
+            )}
           </div>
           
           <Button 
@@ -316,23 +291,6 @@ const ProjectEditPage = () => {
             返回列表
           </Button>
         </div>
-        
-        {project.status > 0 && (
-          <div style={{ marginTop: '16px' }}>
-            <Steps 
-              current={project.status} 
-              size="small"
-              items={getProjectSteps().map((step, index) => ({
-                title: step.title,
-                description: step.description,
-                status: 
-                  index < project.status ? 'finish' : 
-                  index === project.status ? 'process' : 
-                  'wait'
-              }))}
-            />
-          </div>
-        )}
       </Card>
     );
   };
@@ -341,191 +299,186 @@ const ProjectEditPage = () => {
   const renderVideoUploadSection = () => {
     if (!project) return null;
     
-    // 如果项目状态大于0，不允许再上传视频
-    const canUploadVideo = project.status === 0;
+    // 根据isGenerateLock判断是否可以上传视频
+    const canUploadVideo = project.isGenerateLock === 0;
     
     return (
-      <Card 
-        title={
-          <Space>
-            <VideoCameraOutlined />
-            <span>上传源视频</span>
-          </Space>
-        }
-        style={{ marginBottom: '16px' }}
-      >
-        {!canUploadVideo ? (
-          <Alert 
-            message="视频已开始处理，无法继续上传视频" 
-            type="info" 
-            showIcon 
-          />
-        ) : (
-          <>
-            <Dragger
-              name="videoFile"
-              multiple={false}
-              showUploadList={false}
-              beforeUpload={beforeUploadVideo}
-              disabled={uploadingVideo}
-              style={{ marginBottom: '16px' }}
-            >
-              <p className="ant-upload-drag-icon">
-                <CloudUploadOutlined style={{ color: '#1890ff', fontSize: '48px' }} />
-              </p>
-              <p className="ant-upload-text">
-                点击或拖拽视频文件到此区域上传
-              </p>
-              <p className="ant-upload-hint">
-                支持MP4, MOV, AVI等格式，文件大小不超过2GB
-              </p>
-              {uploadingVideo && <Spin style={{ marginTop: '8px' }} />}
-            </Dragger>
-            
-            <div style={{ marginTop: '16px' }}>
-              <Title level={5}>已上传视频</Title>
-              {uploadedVideos.length === 0 ? (
-                <Empty description="暂无已上传视频" />
-              ) : (
-                <List
-                  size="small"
-                  bordered
-                  dataSource={uploadedVideos}
-                  renderItem={item => (
-                    <List.Item
-                      actions={[
-                        <Button 
-                          type="text" 
-                          danger
-                          icon={<DeleteOutlined />} 
-                          disabled
-                          title="暂不支持删除"
-                        />
-                      ]}
-                    >
-                      <List.Item.Meta
-                        avatar={<VideoCameraOutlined style={{ color: '#1890ff', fontSize: '20px' }} />}
-                        title={item.name}
-                      />
-                    </List.Item>
-                  )}
-                />
+      <div>
+        <Card 
+          title={
+            <Space>
+              <VideoCameraOutlined />
+              <span>上传源视频</span>
+            </Space>
+          }
+          style={{ marginBottom: '16px' }}
+        >
+          {!canUploadVideo ? (
+            <Alert 
+              message="项目已开始生成，无法继续上传视频" 
+              type="info" 
+              showIcon 
+            />
+          ) : (
+            <>
+              <Dragger
+                name="videoFile"
+                multiple={false}
+                showUploadList={false}
+                beforeUpload={beforeUploadVideo}
+                disabled={uploadingVideo}
+                style={{ marginBottom: '16px' }}
+              >
+                <p className="ant-upload-drag-icon">
+                  <CloudUploadOutlined style={{ color: '#1890ff', fontSize: '48px' }} />
+                </p>
+                <p className="ant-upload-text">
+                  点击或拖拽视频文件到此区域上传
+                </p>
+                <p className="ant-upload-hint">
+                  支持MP4, MOV, AVI等格式，文件大小不超过2GB
+                </p>
+                {uploadingVideo && <Spin style={{ marginTop: '8px' }} />}
+              </Dragger>
+            </>
+          )}
+        </Card>
+        
+        <Card title="已上传视频" style={{ marginBottom: '16px' }}>
+          {uploadedVideos.length === 0 ? (
+            <Empty description="暂无已上传视频" />
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+              {/* 已上传的视频列表 */}
+              {uploadedVideos.map(item => (
+                <div 
+                  key={item.id}
+                  style={{ 
+                    width: '140px', 
+                    height: '140px', 
+                    border: '1px solid #d9d9d9', 
+                    borderRadius: '8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '16px',
+                    position: 'relative',
+                    overflow: 'hidden'
+                  }}
+                >
+                  <VideoCameraOutlined style={{ fontSize: '32px', color: '#1890ff', marginBottom: '8px' }} />
+                  <div style={{ fontSize: '12px', textAlign: 'center', wordBreak: 'break-word' }}>
+                    {item.name}
+                  </div>
+                </div>
+              ))}
+              
+              {/* 添加更多视频的上传框 - 只在可上传状态时显示 */}
+              {canUploadVideo && (
+                <Upload
+                  listType="picture-card"
+                  showUploadList={false}
+                  beforeUpload={beforeUploadVideo}
+                  disabled={uploadingVideo}
+                >
+                  <div style={{ padding: '24px' }}>
+                    {uploadingVideo ? <LoadingOutlined /> : <PlusOutlined />}
+                    <div style={{ marginTop: '8px' }}>上传更多</div>
+                  </div>
+                </Upload>
               )}
             </div>
-            
-            <div style={{ marginTop: '16px', textAlign: 'right' }}>
-              <Text type="secondary">
-                上传完所有视频后，请点击"开始生成视频"按钮
-              </Text>
-            </div>
-          </>
-        )}
-      </Card>
-    );
-  };
-  
-  // 渲染上传音乐区域
-  const renderMusicUploadSection = () => {
-    if (!project) return null;
-    
-    // 只有背景音乐类型为3(上传音乐文件)时才显示上传区域
-    if (project.backgroundMusicType !== 3) return null;
-    
-    // 如果项目状态大于0，不允许再上传音乐
-    const canUploadMusic = project.status === 0;
-    
-    return (
-      <Card 
-        title={
-          <Space>
-            <CustomerServiceOutlined />
-            <span>上传背景音乐</span>
-          </Space>
-        }
-        style={{ marginBottom: '16px' }}
-      >
-        {!canUploadMusic ? (
-          <Alert 
-            message="视频已开始处理，无法继续上传音乐" 
-            type="info" 
-            showIcon 
-          />
-        ) : (
-          <>
-            <Dragger
-              name="musicFile"
-              multiple={false}
-              showUploadList={false}
-              beforeUpload={beforeUploadMusic}
-              disabled={uploadingMusic}
-            >
-              <p className="ant-upload-drag-icon">
-                <CustomerServiceOutlined style={{ color: '#1890ff', fontSize: '48px' }} />
-              </p>
-              <p className="ant-upload-text">
-                点击或拖拽音乐文件到此区域上传
-              </p>
-              <p className="ant-upload-hint">
-                支持MP3, WAV, AAC等格式，文件大小不超过50MB
-              </p>
-              {uploadingMusic && <Spin style={{ marginTop: '8px' }} />}
-            </Dragger>
-            
-            {project.backgroundMusicPath && (
-              <div style={{ marginTop: '16px' }}>
-                <Alert 
-                  message={
-                    <Space>
-                      <CheckCircleOutlined />
-                      <span>已上传背景音乐</span>
-                    </Space>
-                  } 
-                  type="success" 
-                  showIcon 
-                />
-              </div>
-            )}
-          </>
-        )}
-      </Card>
-    );
-  };
-  
-  // 渲染开始生成按钮
-  const renderStartGenerationSection = () => {
-    if (!project) return null;
-    
-    // 只有项目状态为0且已上传视频时才显示开始生成按钮
-    const canStartGeneration = project.status === 0 && uploadedVideos.length > 0;
-    
-    if (!canStartGeneration) return null;
-    
-    return (
-      <Card>
-        <div style={{ textAlign: 'center' }}>
-          <Button
-            type="primary"
-            size="large"
-            icon={<PlayCircleOutlined />}
-            onClick={handleStartGeneration}
-            loading={startProcessing}
-            disabled={!canStartGeneration}
+          )}
+        </Card>
+        
+        {/* 背景音乐上传区域 - 如果是音乐类型3才显示 */}
+        {project.backgroundMusicType === 3 && (
+          <Card 
+            title={
+              <Space>
+                <CustomerServiceOutlined />
+                <span>上传背景音乐</span>
+              </Space>
+            }
+            style={{ marginBottom: '16px' }}
           >
-            开始生成视频
-          </Button>
-          <div style={{ marginTop: '10px' }}>
-            <Text type="secondary">
-              点击后将开始AI分析与视频生成，请耐心等待处理完成
-            </Text>
-          </div>
-        </div>
-      </Card>
+            {!canUploadVideo ? (
+              <Alert 
+                message="项目已开始生成，无法继续上传音乐" 
+                type="info" 
+                showIcon 
+              />
+            ) : (
+              <>
+                <Dragger
+                  name="musicFile"
+                  multiple={false}
+                  showUploadList={false}
+                  beforeUpload={beforeUploadMusic}
+                  disabled={uploadingMusic}
+                >
+                  <p className="ant-upload-drag-icon">
+                    <CustomerServiceOutlined style={{ color: '#1890ff', fontSize: '48px' }} />
+                  </p>
+                  <p className="ant-upload-text">
+                    点击或拖拽音乐文件到此区域上传
+                  </p>
+                  <p className="ant-upload-hint">
+                    支持MP3, WAV, AAC等格式，文件大小不超过50MB
+                  </p>
+                  {uploadingMusic && <Spin style={{ marginTop: '8px' }} />}
+                </Dragger>
+                
+                {project.backgroundMusicPath && (
+                  <div style={{ marginTop: '16px' }}>
+                    <Alert 
+                      message={
+                        <Space>
+                          <CheckCircleOutlined />
+                          <span>已上传背景音乐</span>
+                        </Space>
+                      } 
+                      type="success" 
+                      showIcon 
+                    />
+                  </div>
+                )}
+              </>
+            )}
+          </Card>
+        )}
+        
+        <Divider />
+        
+        {/* 开始生成按钮 - 仅在未锁定且有上传视频时显示 */}
+        {canUploadVideo && uploadedVideos.length > 0 && (
+          <Card>
+            <div style={{ textAlign: 'center', padding: '20px 0' }}>
+              <Button
+                type="primary"
+                size="large"
+                icon={<PlayCircleOutlined />}
+                onClick={handleStartGeneration}
+                loading={startProcessing}
+              >
+                开始生成视频
+              </Button>
+              <div style={{ marginTop: '10px' }}>
+                <Text type="secondary">
+                  点击后将开始AI分析与视频生成，请耐心等待处理完成
+                </Text>
+              </div>
+            </div>
+          </Card>
+        )}
+      </div>
     );
   };
   
   // 渲染视频生成进度
   const renderProcessingProgress = () => {
-    if (!project || project.status === 0) return null;
+    if (!project) return null;
     
     // 获取当前进度百分比
     const getProgressPercent = (status) => {
@@ -546,33 +499,61 @@ const ProjectEditPage = () => {
     const stepText = getProjectSteps()[project.status]?.title || '处理中';
     
     return (
-      <Card>
-        <div style={{ textAlign: 'center' }}>
-          <Title level={4}>视频生成进度</Title>
-          <div style={{ padding: '20px 50px' }}>
-            <Progress 
-              percent={percent} 
-              status={project.status === 6 ? 'success' : 'active'} 
-              format={() => `${stepText} ${percent}%`} 
+      <div>
+        <Card style={{ marginBottom: '16px' }}>
+          <div>
+            <Title level={4}>视频生成进度</Title>
+            <Steps 
+              current={project.status} 
+              size="small"
+              style={{ marginTop: '20px', marginBottom: '40px' }}
+              items={getProjectSteps().map((step, index) => ({
+                title: step.title,
+                description: step.description,
+                status: 
+                  index < project.status ? 'finish' : 
+                  index === project.status ? 'process' : 
+                  'wait'
+              }))}
             />
+            
+            <div style={{ padding: '0 50px' }}>
+              <Progress 
+                percent={percent} 
+                status={project.status === 6 ? 'success' : 'active'} 
+                format={() => `${stepText} ${percent}%`} 
+              />
+            </div>
           </div>
-          
-          {project.status === 6 && project.finalVideoUrl && (
-            <div style={{ marginTop: '20px' }}>
+        </Card>
+        
+        {project.status === 6 && project.finalVideoUrl && (
+          <Card title="生成结果">
+            <div style={{ textAlign: 'center' }}>
               <Alert
                 message="视频生成完成！"
                 description="您的视频已经成功生成，可以点击下方按钮查看或下载。"
                 type="success"
                 showIcon
-                style={{ marginBottom: '16px' }}
+                style={{ marginBottom: '24px' }}
               />
-              <Space>
+              
+              {/* 显示视频预览 */}
+              <div style={{ marginBottom: '24px' }}>
+                <video 
+                  controls 
+                  style={{ maxWidth: '100%', maxHeight: '400px' }}
+                  src={project.finalVideoUrl}
+                />
+              </div>
+              
+              <Space size="large">
                 <Button 
                   type="primary"
                   icon={<PlaySquareOutlined />}
                   onClick={() => window.open(project.finalVideoUrl, '_blank')}
                 >
-                  查看视频
+                  在新窗口播放
                 </Button>
                 <Button
                   icon={<UploadOutlined />}
@@ -589,20 +570,20 @@ const ProjectEditPage = () => {
                 </Button>
               </Space>
             </div>
-          )}
-          
-          {project.errorMessage && (
-            <div style={{ marginTop: '20px' }}>
-              <Alert
-                message="处理失败"
-                description={project.errorMessage}
-                type="error"
-                showIcon
-              />
-            </div>
-          )}
-        </div>
-      </Card>
+          </Card>
+        )}
+        
+        {project.errorMessage && (
+          <Card>
+            <Alert
+              message="处理失败"
+              description={project.errorMessage}
+              type="error"
+              showIcon
+            />
+          </Card>
+        )}
+      </div>
     );
   };
   
@@ -634,10 +615,15 @@ const ProjectEditPage = () => {
   return (
     <div>
       {renderProjectInfoCard()}
-      {renderVideoUploadSection()}
-      {renderMusicUploadSection()}
-      {renderStartGenerationSection()}
-      {renderProcessingProgress()}
+      
+      <Tabs activeKey={activeTab} onChange={setActiveTab}>
+        <TabPane tab="上传素材" key="1">
+          {renderVideoUploadSection()}
+        </TabPane>
+        <TabPane tab="生成进度" key="2">
+          {renderProcessingProgress()}
+        </TabPane>
+      </Tabs>
     </div>
   );
 };
