@@ -27,6 +27,14 @@ import ProjectListPage from '../apps/VideoMixer/ProjectListPage';
 import ProjectEditPage from '../apps/VideoMixer/ProjectEditPage';
 import ProjectDetailPage from '../apps/VideoMixer/ProjectDetailPage';
 
+// 社交内容
+
+import SocialContentLayout from '../apps/SocialContent/SocialContentLayout';
+import SocialContentHome from '../apps/SocialContent/SocialContentHome';
+import CreateTaskPage from '../apps/SocialContent/CreateTaskPage';
+import TaskListPage from '../apps/SocialContent/TaskListPage';
+import TaskDetailPage from '../apps/SocialContent/TaskDetailPage';
+
 /**
  * 应用卡片配置
  * 用于应用主页展示的应用卡片
@@ -62,6 +70,17 @@ export const appCards = [
     badge: "",
     icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M15 10L19.5528 7.72361C19.8343 7.58281 20 7.30778 20 7V17C20 17.3078 19.8343 17.5828 19.5528 17.7236L15 20M5 5H14C14.5523 5 15 5.44772 15 6V18C15 18.5523 14.5523 19 14 19H5C4.44772 19 4 18.5523 4 18V6C4 5.44772 4.44772 5 5 5Z" stroke="#f43f5e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  },
+  {
+    id: 4,
+    title: "社交媒体内容智能创作",
+    path: "/social-content",
+    description: "基于AI为社交平台快速生成优质内容，自动适配平台特性，提升内容创作效率和影响力",
+    category: "文本生成",
+    badge: "新",
+    icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M7 8h10M7 12h4m1 8l4-8M12 3c7.2 0 9 1.8 9 9s-1.8 9-9 9-9-1.8-9-9 1.8-9 9-9z" stroke="#06b6d4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   }
 ];
@@ -161,6 +180,32 @@ const routes = [
       {
         path: 'details/:projectId', // 项目详情页面
         element: <ProjectDetailPage />
+      }
+    ]
+  },
+  {
+    path: '/social-content',
+    element: (
+      <ProtectedRoute>
+        <SocialContentLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true, // 默认子路由
+        element: <SocialContentHome />
+      },
+      {
+        path: 'create', // 创建任务页面
+        element: <CreateTaskPage />
+      },
+      {
+        path: 'tasks', // 任务列表页面
+        element: <TaskListPage />
+      },
+      {
+        path: 'task/:taskId', // 任务详情页面
+        element: <TaskDetailPage />
       }
     ]
   },
