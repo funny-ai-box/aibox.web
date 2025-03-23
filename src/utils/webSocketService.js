@@ -25,7 +25,7 @@ class WebSocketService {
         this.messageCallbacks = [];
         this.statusCallbacks = [];
         this.sessionId = null;
-        this.baseUrl = 'ws://106.75.71.65:57460/ws/customerservice/chat';
+        this.baseUrl = '/ws/customerservice/chat';
       }
     
       /**
@@ -140,7 +140,9 @@ class WebSocketService {
     
           const joinMessage = {
             type: 'join',
-            sessionId: sessionId
+            data: {
+                  sessionId: Number(sessionId)
+            }
           };
     
           this.socket.send(JSON.stringify(joinMessage));
@@ -186,8 +188,10 @@ class WebSocketService {
     
           const chatMessage = {
             type: 'message',
-            sessionId: this.sessionId,
-            content: message
+            data: {
+
+                  content: message
+            }
           };
     
           this.socket.send(JSON.stringify(chatMessage));

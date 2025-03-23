@@ -18,6 +18,11 @@ export default defineConfig({
         target: 'http://106.75.71.65:57460',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, '/api')
+      },
+      '/ws': {
+        target: 'ws://106.75.71.65:57460',
+        ws: true, // 启用websocket代理
+        changeOrigin: true
       }
     }
   }
