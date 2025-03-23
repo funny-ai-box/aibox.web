@@ -12,7 +12,7 @@ class WebSocketService {
         this.messageCallbacks = [];
         this.statusCallbacks = [];
         this.sessionId = null;
-        this.baseUrl = 'wss://106.75.71.65:57460/ws/customerservice/chat';
+        this.baseUrl = 'ws://106.75.71.65:57460/ws/customerservice/chat';
       }
     
       /**

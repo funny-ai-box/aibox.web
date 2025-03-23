@@ -200,7 +200,7 @@ const customerServiceAPI = {
    * @returns {string} - WebSocket URL
    */
   getWebSocketUrl: () => {
-    return 'wss://106.75.71.65:57460/ws/customerservice/chat';
+    return 'ws://106.75.71.65:57460/ws/customerservice/chat';
   }
 };
 
