@@ -400,7 +400,7 @@ const SocialContentHome = () => {
       {renderStatisticsCards()}
       
       <Row gutter={24}>
-        <Col span={16}>
+        <Col span={14}>
           <Card 
             title={
               <Space>
@@ -418,44 +418,15 @@ const SocialContentHome = () => {
             {renderRecentTasks()}
           </Card>
           
-          <Card
+        
+        </Col>
+        
+        <Col span={10}>
+        <Card
             title="功能特性"
             style={{ marginBottom: '24px' }}
           >
             {renderFeatures()}
-          </Card>
-        </Col>
-        
-        <Col span={8}>
-          <Card
-            title="支持的社交平台"
-            style={{ marginBottom: '24px' }}
-          >
-            {renderPlatforms()}
-          </Card>
-          
-          <Card>
-            <Paragraph>
-              <Text strong>使用说明：</Text>
-            </Paragraph>
-            <ul>
-              <li>选择目标社交平台</li>
-              <li>填写商品信息和关键词</li>
-              <li>可选择上传商品图片</li>
-              <li>选择合适的提示词模板</li>
-              <li>开始智能生成内容</li>
-              <li>生成后可以复制或调整内容</li>
-            </ul>
-            <Divider />
-            <div style={{ textAlign: 'center' }}>
-              <Button 
-                type="primary" 
-                icon={<PlusOutlined />}
-                onClick={createNewTask}
-              >
-                立即创建内容
-              </Button>
-            </div>
           </Card>
         </Col>
       </Row>

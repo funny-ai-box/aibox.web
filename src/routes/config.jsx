@@ -35,6 +35,18 @@ import CreateTaskPage from '../apps/SocialContent/CreateTaskPage';
 import TaskListPage from '../apps/SocialContent/TaskListPage';
 import TaskDetailPage from '../apps/SocialContent/TaskDetailPage';
 
+// 客服
+
+import CustomerServiceLayout from '../apps/CustomerService/CustomerServiceLayout';
+import CustomerServiceHome from '../apps/CustomerService/CustomerServiceHome';
+import ChatPage from '../apps/CustomerService/ChatPage';
+import SessionListPage from '../apps/CustomerService/SessionListPage';
+import ProductListPage from '../apps/CustomerService/ProductListPage';
+import CreateProductPage from '../apps/CustomerService/CreateProductPage';
+import EditProductPage from '../apps/CustomerService/EditProductPage';
+import ProductDetailPage from '../apps/CustomerService/ProductDetailPage';
+
+
 /**
  * 应用卡片配置
  * 用于应用主页展示的应用卡片
@@ -81,6 +93,19 @@ export const appCards = [
     badge: "新",
     icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M7 8h10M7 12h4m1 8l4-8M12 3c7.2 0 9 1.8 9 9s-1.8 9-9 9-9-1.8-9-9 1.8-9 9-9z" stroke="#06b6d4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  },
+  {
+    id: 5,
+    title: "智能客服系统",
+    path: "/customer-service",
+    description: "基于AI的智能客服系统，自动回答用户问题，查询商品信息，提高客户服务效率",
+    category: "客户服务",
+    badge: "新",
+    icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M7 19C7 20.1 7.9 21 9 21H15C16.1 21 17 20.1 17 19V3H7V19ZM9 5H15V19H9V5Z" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M12 3C12.5523 3 13 2.55228 13 2C13 1.44772 12.5523 1 12 1C11.4477 1 11 1.44772 11 2C11 2.55228 11.4477 3 12 3Z" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <path d="M15 9H9M15 12H9M15 15H9" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
     </svg>
   }
 ];
@@ -206,6 +231,44 @@ const routes = [
       {
         path: 'task/:taskId', // 任务详情页面
         element: <TaskDetailPage />
+      }
+    ]
+  },
+  {
+    path: '/customer-service',
+    element: (
+      <ProtectedRoute>
+        <CustomerServiceLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true, // 默认子路由
+        element: <CustomerServiceHome />
+      },
+      {
+        path: 'sessions',
+        element: <SessionListPage />
+      },
+      {
+        path: 'chat/:sessionId',
+        element: <ChatPage />
+      },
+      {
+        path: 'products',
+        element: <ProductListPage />
+      },
+      {
+        path: 'products/create',
+        element: <CreateProductPage />
+      },
+      {
+        path: 'products/edit/:productId',
+        element: <EditProductPage />
+      },
+      {
+        path: 'products/:productId',
+        element: <ProductDetailPage />
       }
     ]
   },

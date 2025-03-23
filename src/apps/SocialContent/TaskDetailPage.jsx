@@ -20,7 +20,8 @@ import {
   Tooltip,
   Row,
   Col,
-  Breadcrumb
+  Breadcrumb,
+  Badge
 } from 'antd';
 import {
   ArrowLeftOutlined,
@@ -311,11 +312,7 @@ const TaskDetailPage = () => {
               key={platformId}
               title={
                 <Space>
-                  <img 
-                    src={getPlatformIcon(platformCode)} 
-                    alt={platformName}
-                    style={{ width: '24px', height: '24px' }}
-                  />
+       
                   <span>{platformName}</span>
                 </Space>
               }
