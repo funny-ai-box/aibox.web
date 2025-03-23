@@ -3,6 +3,19 @@
  * 处理智能客服实时聊天连接
  */
 class WebSocketService {
+
+      _getToken() {
+        const userInfo = localStorage.getItem('userInfo');
+        if (userInfo) {
+          try {
+            return JSON.parse(userInfo).accessToken;
+          } catch (e) {
+            console.error('解析用户信息失败', e);
+            return null;
+          }
+        }
+        return null;
+      }
       constructor() {
         this.socket = null;
         this.isConnected = false;
@@ -27,7 +40,15 @@ class WebSocketService {
           }
     
           try {
-            this.socket = new WebSocket(this.baseUrl);
+            const token = this._getToken();
+        
+        // 在WebSocket URL中添加token作为查询参数,使用Bearer前缀
+        const wsUrl = token ? 
+          `${this.baseUrl}?token=${encodeURIComponent(`Bearer ${token}`)}` : 
+          this.baseUrl;
+        
+
+            this.socket = new WebSocket(wsUrl);
     
             this.socket.onopen = () => {
               console.log('WebSocket connection established');
