@@ -146,37 +146,55 @@ const ChatComponent = ({ sessionId, onClose }) => {
       await webSocketService.joinSession(sessionId);
     } catch (error) {
       console.error('加入聊天会话失败:', error);
-      message.error('加入聊天会话失败，可能无法实时聊天');
+
     }
   };
 
   // 处理WebSocket消息
   const handleWebSocketMessage = (data) => {
-    console.log('收到WebSocket消息:', data);
-
-    if (!data) return;
-
-    switch (data.type) {
-      case 'join_success':
-        message.success('已成功加入聊天会话');
-        break;
-        
-      case 'leave_success':
-        message.info('已离开聊天会话');
-        break;
-        
-      case 'message':
-        handleNewMessage(data);
-        break;
-        
-      case 'error':
-        message.error(data.message || '发生错误');
-        break;
-        
-      default:
-        break;
-    }
-  };
+      console.log('收到WebSocket消息:', data);
+  
+      if (!data) return;
+  
+      switch (data.type) {
+        case 'join_success':
+          message.success('已成功加入聊天会话');
+          break;
+          
+        case 'leave_success':
+          message.info('已离开聊天会话');
+          break;
+          
+        case 'message':
+          handleNewMessage(data);
+          break;
+          
+        case 'reply':
+          // 处理新格式的回复消息
+          if (data.data) {
+            handleNewMessage({
+              content: data.data.content,
+              role: data.data.role === 'assistant' ? 1 : 2, // 1=assistant, 2=user
+              intent: data.data.intent || '',
+              callDatas: data.data.callDatas || '',
+              id: data.data.messageId,
+              createDate: data.data.timestamp
+            });
+          }
+          break;
+          
+        case 'error':
+          message.error(data.message || '发生错误');
+          break;
+          
+        default:
+          // 如果已经由webSocketService处理过格式转换，则尝试直接作为消息处理
+          if (data.content && (data.role === 1 || data.role === 2)) {
+            handleNewMessage(data);
+          }
+          break;
+      }
+    };
 
   // 处理新消息
   const handleNewMessage = (data) => {

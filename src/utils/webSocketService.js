@@ -59,14 +59,31 @@ class WebSocketService {
             };
     
             this.socket.onmessage = (event) => {
-              try {
-                const data = JSON.parse(event.data);
-                console.log('收到WebSocket消息:', data);
-                this._notifyMessageReceived(data);
-              } catch (e) {
-                console.error('解析WebSocket消息失败:', e);
-              }
-            };
+                  try {
+                    const data = JSON.parse(event.data);
+                    console.log('收到WebSocket消息:', data);
+                    
+                    // 处理新的消息格式
+                    if (data.type === 'reply' && data.data) {
+                      // 转换为应用程序内部使用的格式
+                      const processedMessage = {
+                        type: 'message',
+                        content: data.data.content,
+                        role: data.data.role === 'assistant' ? 1 : 2, // 1=assistant, 2=user
+                        intent: data.data.intent || '',
+                        callDatas: data.data.callDatas || '',
+                        id: data.data.messageId,
+                        createDate: data.data.timestamp
+                      };
+                      this._notifyMessageReceived(processedMessage);
+                    } else {
+                      // 处理其他类型的消息
+                      this._notifyMessageReceived(data);
+                    }
+                  } catch (e) {
+                    console.error('解析WebSocket消息失败:', e);
+                  }
+                };
     
             this.socket.onclose = (event) => {
               console.log('WebSocket connection closed:', event);
