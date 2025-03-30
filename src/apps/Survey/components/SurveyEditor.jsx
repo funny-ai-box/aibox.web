@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Card,
   Button,
-  Tabs,
   Form,
   Input,
   Select,
@@ -37,18 +36,18 @@ const { Title, Text, Paragraph } = Typography;
 const { Option } = Select;
 const { Panel } = Collapse;
 const { TextArea } = Input;
-const { TabPane } = Tabs;
 const { confirm } = Modal;
 
 /**
- * 问卷编辑器组件
+ * 问卷编辑器组件 - 优化版
+ * 使用卡片从上到下显示问卷内容，而不是使用标签页
+ * 
  * @param {Object} props
  * @param {Object} props.surveyData - 问卷数据
  * @param {number} props.taskId - 问卷任务ID
  * @param {Function} props.onSaved - 保存成功后的回调
  */
 const SurveyEditor = ({ surveyData, taskId, onSaved }) => {
-  const [activeTabKey, setActiveTabKey] = useState(null);
   const [editingTabIndex, setEditingTabIndex] = useState(-1);
   const [editingFieldIndex, setEditingFieldIndex] = useState(-1);
   const [tabs, setTabs] = useState([]);
@@ -63,15 +62,10 @@ const SurveyEditor = ({ surveyData, taskId, onSaved }) => {
   useEffect(() => {
     if (surveyData && surveyData.tabs) {
       setTabs(surveyData.tabs);
-      
-      // 如果有标签页，默认选中第一个
-      if (surveyData.tabs.length > 0) {
-        setActiveTabKey(surveyData.tabs[0].id.toString());
-      }
     }
   }, [surveyData]);
   
-  // 添加新标签页
+  // 添加新标签页（现在称为"部分"）
   const addNewTab = () => {
     setEditingTabIndex(-1);
     tabForm.resetFields();
@@ -90,9 +84,9 @@ const SurveyEditor = ({ surveyData, taskId, onSaved }) => {
   // 确认删除标签页
   const confirmDeleteTab = (tabIndex) => {
     confirm({
-      title: '确认删除标签页',
+      title: '确认删除此部分',
       icon: <ExclamationCircleOutlined />,
-      content: '删除标签页将同时删除该标签页下的所有字段，确定要删除吗？',
+      content: '删除此部分将同时删除该部分下的所有字段，确定要删除吗？',
       okText: '确认',
       okType: 'danger',
       cancelText: '取消',
@@ -113,17 +107,6 @@ const SurveyEditor = ({ surveyData, taskId, onSaved }) => {
     };
     
     setTabs(newTabs);
-    
-    // 如果删除的是当前激活的标签页，则自动选择其他标签页
-    if (activeTabKey === newTabs[tabIndex].id.toString()) {
-      // 找到下一个未删除的标签页
-      const nextTab = newTabs.find((tab, idx) => idx !== tabIndex && tab.operation !== 'delete');
-      if (nextTab) {
-        setActiveTabKey(nextTab.id.toString());
-      } else {
-        setActiveTabKey(null);
-      }
-    }
   };
   
   // 上移标签页
@@ -322,11 +305,6 @@ const SurveyEditor = ({ surveyData, taskId, onSaved }) => {
       
       setTabs(newTabs);
       setModalVisible(false);
-      
-      // 如果是新标签页，自动选中
-      if (editingTabIndex === -1 && newTabs.length > 0) {
-        setActiveTabKey(newTabs[newTabs.length - 1].id.toString());
-      }
     } catch (error) {
       console.error('表单验证失败:', error);
     }
@@ -340,7 +318,7 @@ const SurveyEditor = ({ surveyData, taskId, onSaved }) => {
       // 处理选项类型的配置
       let config = { ...values.config };
       
-              // 处理Radio/Checkbox/Select类型的选项
+      // 处理Radio/Checkbox/Select类型的选项
       if (['Radio', 'Checkbox', 'Select'].includes(values.type) && values.config.optionsText) {
         const optionsLines = values.config.optionsText.split('\n').filter(line => line.trim());
         
@@ -371,12 +349,14 @@ const SurveyEditor = ({ surveyData, taskId, onSaved }) => {
       // 生成唯一的fieldKey
       const fieldKey = values.fieldKey || `field_${Date.now()}`;
       
+
+      
       if (editingFieldIndex === -1) {
         // 添加新字段
         const tabIndex = newTabs.findIndex(tab => tab.id === values.tabId);
         
         if (tabIndex === -1) {
-          throw new Error('找不到指定的标签页');
+          throw new Error('找不到指定的部分');
         }
         
         const newField = {
@@ -570,91 +550,6 @@ const SurveyEditor = ({ surveyData, taskId, onSaved }) => {
     }
   };
   
-  // 渲染标签页内容
-  const renderTabContent = (tab) => {
-    if (!tab || tab.operation === 'delete') {
-      return <Empty description="请选择或添加一个标签页" />;
-    }
-    
-    const visibleFields = tab.fields?.filter(field => field.operation !== 'delete') || [];
-    
-    return (
-      <div>
-        <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between' }}>
-          <div>
-            <Title level={5}>字段列表</Title>
-            <Text type="secondary">该标签页下的所有字段</Text>
-          </div>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => addNewField(tab.id, tabs.indexOf(tab))}
-          >
-            添加字段
-          </Button>
-        </div>
-        
-        {visibleFields.length === 0 ? (
-          <Empty description="暂无字段，请添加字段" />
-        ) : (
-          <List
-            bordered
-            dataSource={visibleFields}
-            renderItem={(field, index) => (
-              <List.Item
-                actions={[
-                  <Tooltip title="上移">
-                    <Button
-                      icon={<ArrowUpOutlined />}
-                      disabled={index === 0}
-                      onClick={() => moveFieldUp(tabs.indexOf(tab), index)}
-                    />
-                  </Tooltip>,
-                  <Tooltip title="下移">
-                    <Button
-                      icon={<ArrowDownOutlined />}
-                      disabled={index === visibleFields.length - 1}
-                      onClick={() => moveFieldDown(tabs.indexOf(tab), index)}
-                    />
-                  </Tooltip>,
-                  <Tooltip title="编辑">
-                    <Button
-                      icon={<EditOutlined />}
-                      onClick={() => editField(field, tabs.indexOf(tab), tab.fields.findIndex(f => f.id === field.id))}
-                    />
-                  </Tooltip>,
-                  <Tooltip title="删除">
-                    <Button
-                      danger
-                      icon={<DeleteOutlined />}
-                      onClick={() => confirmDeleteField(tabs.indexOf(tab), tab.fields.findIndex(f => f.id === field.id))}
-                    />
-                  </Tooltip>
-                ]}
-              >
-                <List.Item.Meta
-                  title={
-                    <Space>
-                      <Text strong>{field.name}</Text>
-                      {field.isRequired && <Text type="danger">(必填)</Text>}
-                    </Space>
-                  }
-                  description={
-                    <Space direction="vertical" style={{ width: '100%' }}>
-                      <Text type="secondary">类型: {field.type}</Text>
-                      {field.placeholder && <Text type="secondary">提示文本: {field.placeholder}</Text>}
-                      {renderFieldConfigPreview(field)}
-                    </Space>
-                  }
-                />
-              </List.Item>
-            )}
-          />
-        )}
-      </div>
-    );
-  };
-  
   // 渲染字段配置预览
   const renderFieldConfigPreview = (field) => {
     const { type, config } = field;
@@ -797,13 +692,136 @@ const SurveyEditor = ({ surveyData, taskId, onSaved }) => {
     );
   };
   
+  // 渲染一个部分（之前的标签页）的内容
+  const renderSection = (tab, index) => {
+    if (tab.operation === 'delete') {
+      return null; // 跳过被删除的部分
+    }
+    
+    const visibleFields = tab.fields?.filter(field => field.operation !== 'delete') || [];
+    
+    return (
+      <Card 
+        key={tab.id}
+        title={
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>{tab.name}</span>
+            <Space>
+              <Tooltip title="上移部分">
+                <Button 
+                  icon={<ArrowUpOutlined />} 
+                  size="small"
+                  disabled={index === 0}
+                  onClick={() => moveTabUp(index)}
+                />
+              </Tooltip>
+              <Tooltip title="下移部分">
+                <Button 
+                  icon={<ArrowDownOutlined />} 
+                  size="small"
+                  disabled={index === tabs.filter(t => t.operation !== 'delete').length - 1}
+                  onClick={() => moveTabDown(index)}
+                />
+              </Tooltip>
+              <Tooltip title="编辑部分">
+                <Button 
+                  icon={<EditOutlined />} 
+                  size="small"
+                  onClick={() => editTab(tab, index)}
+                />
+              </Tooltip>
+              <Tooltip title="删除部分">
+                <Button 
+                  icon={<DeleteOutlined />} 
+                  danger
+                  size="small"
+                  onClick={() => confirmDeleteTab(index)}
+                />
+              </Tooltip>
+            </Space>
+          </div>
+        }
+        style={{ marginBottom: '16px'}}
+        extra={
+          <Button 
+            type="primary" 
+            style={{ marginLeft: '8px' }}
+            icon={<PlusOutlined />}
+            onClick={() => addNewField(tab.id, index)}
+          >
+            添加字段
+          </Button>
+        }
+      >
+        {visibleFields.length === 0 ? (
+          <Empty description="暂无字段，请添加字段" />
+        ) : (
+          <List
+            bordered
+            dataSource={visibleFields}
+            renderItem={(field, fieldIndex) => (
+              <List.Item
+                actions={[
+                  <Tooltip title="上移">
+                    <Button
+                      icon={<ArrowUpOutlined />}
+                      disabled={fieldIndex === 0}
+                      onClick={() => moveFieldUp(index, tab.fields.findIndex(f => f.id === field.id))}
+                    />
+                  </Tooltip>,
+                  <Tooltip title="下移">
+                    <Button
+                      icon={<ArrowDownOutlined />}
+                      disabled={fieldIndex === visibleFields.length - 1}
+                      onClick={() => moveFieldDown(index, tab.fields.findIndex(f => f.id === field.id))}
+                    />
+                  </Tooltip>,
+                  <Tooltip title="编辑">
+                    <Button
+                      icon={<EditOutlined />}
+                      onClick={() => editField(field, index, tab.fields.findIndex(f => f.id === field.id))}
+                    />
+                  </Tooltip>,
+                  <Tooltip title="删除">
+                    <Button
+                      danger
+                      icon={<DeleteOutlined />}
+                      onClick={() => confirmDeleteField(index, tab.fields.findIndex(f => f.id === field.id))}
+                    />
+                  </Tooltip>
+                ]}
+              >
+                <List.Item.Meta
+                  title={
+                    <Space>
+                      <Text strong>{field.name}</Text>
+                      {field.isRequired && <Text type="danger">(必填)</Text>}
+                    </Space>
+                  }
+                  description={
+                    <Space direction="vertical" style={{ width: '100%' }}>
+                      <Text type="secondary">类型: {field.type}</Text>
+                      <Text type="secondary">字段标识: {field.fieldKey}</Text>
+                      {field.placeholder && <Text type="secondary">提示文本: {field.placeholder}</Text>}
+                      {renderFieldConfigPreview(field)}
+                    </Space>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        )}
+      </Card>
+    );
+  };
+  
   return (
     <div>
       <Card>
         <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between' }}>
           <div>
             <Title level={5}>问卷结构</Title>
-            <Text type="secondary">设计问卷的标签页与字段</Text>
+            <Text type="secondary">设计问卷的各部分与字段</Text>
           </div>
           <Space>
             <Button
@@ -818,69 +836,29 @@ const SurveyEditor = ({ surveyData, taskId, onSaved }) => {
               icon={<PlusCircleOutlined />}
               onClick={addNewTab}
             >
-              添加标签页
+              添加部分
             </Button>
           </Space>
         </div>
         
-        <Tabs
-          activeKey={activeTabKey}
-          onChange={setActiveTabKey}
-          type="editable-card"
-          onEdit={(targetKey, action) => {
-            if (action === 'add') {
-              addNewTab();
-            }
-          }}
-          tabBarExtraContent={<div style={{ width: '16px' }} />}
-          items={tabs
-            .filter(tab => tab.operation !== 'delete')
-            .map((tab, index) => ({
-              key: tab.id.toString(),
-              label: (
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <span>{tab.name}</span>
-                  <div style={{ marginLeft: '8px' }}>
-                    <Space size="small">
-                      <Tooltip title="编辑标签页">
-                        <EditOutlined
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            editTab(tab, index);
-                          }}
-                        />
-                      </Tooltip>
-                      <Tooltip title="删除标签页">
-                        <DeleteOutlined
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            confirmDeleteTab(index);
-                          }}
-                        />
-                      </Tooltip>
-                    </Space>
-                  </div>
-                </div>
-              ),
-              children: renderTabContent(tab)
-            }))}
-        />
-        
-        {tabs.filter(tab => tab.operation !== 'delete').length === 0 && (
-          <Empty
-            description="暂无标签页，请添加标签页"
+        {/* 渲染所有部分（原标签页） */}
+        {tabs.filter(tab => tab.operation !== 'delete').length === 0 ? (
+          <Empty 
+            description="暂无内容，请添加部分" 
             style={{ margin: '40px 0' }}
           >
             <Button type="primary" icon={<PlusOutlined />} onClick={addNewTab}>
-              添加标签页
+              添加部分
             </Button>
           </Empty>
+        ) : (
+          tabs.map((tab, index) => renderSection(tab, index))
         )}
       </Card>
       
       {/* 标签页弹框 */}
       <Modal
-        title={editingTabIndex === -1 ? '添加标签页' : '编辑标签页'}
+        title={editingTabIndex === -1 ? '添加部分' : '编辑部分'}
         open={modalVisible}
         onOk={saveTab}
         onCancel={() => setModalVisible(false)}
@@ -891,8 +869,8 @@ const SurveyEditor = ({ surveyData, taskId, onSaved }) => {
         >
           <Form.Item
             name="name"
-            label="标签页名称"
-            rules={[{ required: true, message: '请输入标签页名称' }]}
+            label="部分名称"
+            rules={[{ required: true, message: '请输入部分名称' }]}
           >
             <Input placeholder="例如: 基本信息" />
           </Form.Item>

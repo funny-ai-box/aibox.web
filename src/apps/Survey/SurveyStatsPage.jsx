@@ -18,7 +18,9 @@ import {
   Breadcrumb,
   Select,
   DatePicker,
-  Tooltip
+  Tooltip,
+  Rate,
+  Drawer
 } from 'antd';
 import {
   BarChartOutlined,
@@ -32,7 +34,8 @@ import {
   FileTextOutlined,
   UserOutlined,
   CalendarOutlined,
-  EyeOutlined
+  EyeOutlined,
+  CloseOutlined
 } from '@ant-design/icons';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import surveyAPI from '../../api/surveyAPI';
@@ -57,9 +60,9 @@ const SurveyStatsPage = () => {
     total: 0
   });
   const [activeTab, setActiveTab] = useState('overview');
-  const [selectedResponseId, setSelectedResponseId] = useState(null);
   const [responseDetail, setResponseDetail] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
   
   // 初始化加载
   useEffect(() => {
@@ -119,12 +122,12 @@ const SurveyStatsPage = () => {
   const fetchResponseDetail = async (responseId) => {
     try {
       setLoadingDetail(true);
-      setSelectedResponseId(responseId);
       
       const response = await surveyAPI.getResponseDetail(responseId);
       
       if (response.code === 200) {
         setResponseDetail(response.data);
+        setDrawerVisible(true);
       } else {
         message.error(response.message || '获取回答详情失败');
       }
@@ -362,51 +365,6 @@ const SurveyStatsPage = () => {
     );
   };
   
-  // 渲染回答详情
-  const renderResponseDetail = () => {
-    if (!responseDetail) {
-      return (
-        <Card>
-          <Empty description="请选择一个回答查看详情" />
-        </Card>
-      );
-    }
-    
-    return (
-      <Spin spinning={loadingDetail}>
-        <Card 
-          title={`回答详情 #${responseDetail.id}`}
-          extra={
-            <Space>
-              <Text type="secondary">提交时间: {formatDate(responseDetail.submitDate)}</Text>
-              <Text type="secondary">IP: {responseDetail.respondentIp}</Text>
-            </Space>
-          }
-        >
-          <List
-            itemLayout="horizontal"
-            dataSource={responseDetail.fieldValues || []}
-            renderItem={item => (
-              <List.Item>
-                <List.Item.Meta
-                  title={item.fieldName}
-                  description={
-                    <Space direction="vertical">
-                      <Tag color="blue">{item.fieldType}</Tag>
-                      <div style={{ marginTop: '8px' }}>
-                        {renderFieldValue(item)}
-                      </div>
-                    </Space>
-                  }
-                />
-              </List.Item>
-            )}
-          />
-        </Card>
-      </Spin>
-    );
-  };
-  
   // 渲染字段值
   const renderFieldValue = (field) => {
     const { fieldType, value } = field;
@@ -416,7 +374,7 @@ const SurveyStatsPage = () => {
       case 'Radio':
       case 'Select':
         // 在实际应用中，可能需要根据选项配置查找显示文本
-        return <Tag>{value}</Tag>;
+        return value;
         
       case 'Checkbox':
         // 多选框显示为多个标签
@@ -444,11 +402,11 @@ const SurveyStatsPage = () => {
       case 'Time':
       case 'DateTime':
         // 时间类型格式化显示
-        return <Text type="secondary">{value}</Text>;
+        return value;
         
       default:
         // 其他类型直接显示值
-        return <Text>{value || '(空)'}</Text>;
+        return value || '(空)';
     }
   };
   
@@ -475,7 +433,7 @@ const SurveyStatsPage = () => {
         </div>
       </Card>
       
-      <Spin spinning={loading && !responseDetail}>
+      <Spin spinning={loading}>
         <Tabs activeKey={activeTab} onChange={setActiveTab}>
           <TabPane
             tab={
@@ -500,21 +458,53 @@ const SurveyStatsPage = () => {
           >
             {renderResponses()}
           </TabPane>
-          
-          <TabPane
-            tab={
-              <span>
-                <FileTextOutlined />
-                回答详情
-              </span>
-            }
-            key="detail"
-            disabled={!selectedResponseId}
-          >
-            {renderResponseDetail()}
-          </TabPane>
         </Tabs>
       </Spin>
+      
+      {/* 侧滑抽屉展示回答详情 */}
+      <Drawer
+        title={responseDetail ? `回答详情 #${responseDetail.id}` : '回答详情'}
+        placement="right"
+        width={500}
+        onClose={() => setDrawerVisible(false)}
+        open={drawerVisible}
+        extra={
+          <Button 
+            icon={<CloseOutlined />} 
+            onClick={() => setDrawerVisible(false)}
+            type="text"
+          />
+        }
+      >
+        <Spin spinning={loadingDetail}>
+          {responseDetail ? (
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <div style={{ marginBottom: '16px' }}>
+                <Text type="secondary">提交时间: {formatDate(responseDetail.submitDate)}</Text>
+                <br />
+                <Text type="secondary">IP: {responseDetail.respondentIp}</Text>
+              </div>
+              
+              <Divider />
+              
+              <List
+                itemLayout="vertical"
+                dataSource={responseDetail.fieldValues || []}
+                renderItem={item => (
+                  <List.Item>
+                    <div style={{ marginBottom: '8px' }}>
+                      <Text strong>{item.fieldName}</Text>
+                    </div>
+                    <div>{renderFieldValue(item)}</div>
+                  </List.Item>
+                )}
+              />
+            </Space>
+          ) : (
+            <Empty description="暂无数据" />
+          )}
+        </Spin>
+      </Drawer>
     </div>
   );
 };

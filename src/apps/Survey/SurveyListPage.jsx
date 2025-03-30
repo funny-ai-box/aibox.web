@@ -228,6 +228,7 @@ const SurveyListPage = () => {
       title: '问卷名称',
       dataIndex: 'name',
       key: 'name',
+      width: 200,
       ellipsis: true,
       render: (text) => (
         <Tooltip title={text}>
@@ -239,6 +240,7 @@ const SurveyListPage = () => {
       title: '描述',
       dataIndex: 'description',
       key: 'description',
+      width: 200,
       ellipsis: true,
       render: (text) => (
         <Tooltip title={text}>
@@ -251,9 +253,7 @@ const SurveyListPage = () => {
       dataIndex: 'responseCount',
       key: 'responseCount',
       width: 100,
-      render: (count) => (
-        <Badge count={count} showZero style={{ backgroundColor: count > 0 ? '#1890ff' : '#ccc' }} />
-      ),
+
       sorter: (a, b) => a.responseCount - b.responseCount
     },
     {
@@ -297,7 +297,7 @@ const SurveyListPage = () => {
               <Tooltip title="编辑问卷">
                 <Button
                   type="link"
-                  icon={<FormOutlined />}
+          
                   onClick={() => navigate(`/survey/edit/${record.id}`)}
                 >
                   编辑
@@ -306,7 +306,7 @@ const SurveyListPage = () => {
               <Tooltip title="发布问卷">
                 <Button
                   type="link"
-                  icon={<CheckCircleOutlined />}
+         
                   onClick={() => publishSurvey(record.id)}
                 >
                   发布
@@ -320,7 +320,7 @@ const SurveyListPage = () => {
               <Tooltip title="查看统计">
                 <Button
                   type="link"
-                  icon={<BarChartOutlined />}
+            
                   onClick={() => navigate(`/survey/stats/${record.id}`)}
                 >
                   统计
@@ -329,7 +329,7 @@ const SurveyListPage = () => {
               <Tooltip title="分享链接">
                 <Button
                   type="link"
-                  icon={<ShareAltOutlined />}
+           
                   onClick={() => copyShareLink(record.shareCode)}
                 >
                   分享
@@ -338,7 +338,7 @@ const SurveyListPage = () => {
               <Tooltip title="关闭问卷">
                 <Button
                   type="link"
-                  icon={<StopOutlined />}
+             
                   onClick={() => closeSurvey(record.id)}
                 >
                   关闭
@@ -352,7 +352,7 @@ const SurveyListPage = () => {
               <Tooltip title="查看统计">
                 <Button
                   type="link"
-                  icon={<BarChartOutlined />}
+           
                   onClick={() => navigate(`/survey/stats/${record.id}`)}
                 >
                   统计
@@ -361,7 +361,7 @@ const SurveyListPage = () => {
               <Tooltip title="重新发布">
                 <Button
                   type="link"
-                  icon={<CheckCircleOutlined />}
+          
                   onClick={() => publishSurvey(record.id)}
                 >
                   重新发布
@@ -373,7 +373,7 @@ const SurveyListPage = () => {
           <Tooltip title="预览问卷">
             <Button
               type="link"
-              icon={<EyeOutlined />}
+ 
               onClick={() => navigate(`/survey/preview/${record.id}`)}
             >
               预览
@@ -390,7 +390,7 @@ const SurveyListPage = () => {
               <Button
                 type="link"
                 danger
-                icon={<DeleteOutlined />}
+ 
               >
                 删除
               </Button>

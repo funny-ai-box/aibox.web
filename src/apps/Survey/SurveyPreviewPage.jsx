@@ -3,7 +3,6 @@ import {
   Card,
   Button,
   Typography,
-  Tabs,
   Form,
   Input,
   InputNumber,
@@ -30,14 +29,13 @@ import {
 } from '@ant-design/icons';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import surveyAPI from '../../api/surveyAPI';
-import moment from 'moment';
 
 const { Title, Text, Paragraph } = Typography;
-const { TabPane } = Tabs;
 const { TextArea } = Input;
 
 /**
- * 问卷预览页面
+ * 问卷预览页面 - 优化版
+ * 使用卡片从上到下显示问卷内容，而不是使用标签页
  */
 const SurveyPreviewPage = () => {
   const { taskId, shareCode } = useParams();
@@ -47,7 +45,6 @@ const SurveyPreviewPage = () => {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [surveyData, setSurveyData] = useState(null);
-  const [activeTabKey, setActiveTabKey] = useState('0');
   const [submitted, setSubmitted] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   
@@ -72,11 +69,6 @@ const SurveyPreviewPage = () => {
       
       if (response.code === 200) {
         setSurveyData(response.data);
-        
-        // 默认选中第一个标签页
-        if (response.data.tabs && response.data.tabs.length > 0) {
-          setActiveTabKey(response.data.tabs[0].id.toString());
-        }
       } else {
         message.error(response.message || '获取问卷详情失败');
       }
@@ -96,11 +88,6 @@ const SurveyPreviewPage = () => {
       
       if (response.code === 200) {
         setSurveyData(response.data);
-        
-        // 默认选中第一个标签页
-        if (response.data.tabs && response.data.tabs.length > 0) {
-          setActiveTabKey(response.data.tabs[0].id.toString());
-        }
         
         // 检查问卷状态
         if (response.data.status !== 1) {
@@ -426,10 +413,10 @@ const SurveyPreviewPage = () => {
     }
   };
   
-  // 渲染标签页
-  const renderTabContent = (tab) => {
+  // 渲染标签页内容
+  const renderSectionContent = (tab) => {
     if (!tab?.fields?.length) {
-      return <div style={{ padding: '20px 0', textAlign: 'center' }}>该标签页下没有字段</div>;
+      return <div style={{ padding: '20px 0', textAlign: 'center' }}>该部分没有字段</div>;
     }
     
     return tab.fields.map(field => renderField(field));
@@ -479,22 +466,17 @@ const SurveyPreviewPage = () => {
         layout="vertical"
         scrollToFirstError
       >
-        <Tabs 
-          activeKey={activeTabKey} 
-          onChange={setActiveTabKey}
-          type="card"
-        >
-          {surveyData.tabs?.map(tab => (
-            <TabPane
-              tab={tab.name}
-              key={tab.id.toString()}
-            >
-              {renderTabContent(tab)}
-            </TabPane>
-          ))}
-        </Tabs>
-        
-        <Divider />
+        {/* 从上到下以卡片形式显示每个部分 */}
+        {surveyData.tabs?.map((tab, index) => (
+          <Card 
+            key={tab.id} 
+            title={tab.name}
+            style={{ marginBottom: '20px' }}
+            headStyle={{ backgroundColor: '#f5f5f5' }}
+          >
+            {renderSectionContent(tab)}
+          </Card>
+        ))}
         
         <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
           <Button

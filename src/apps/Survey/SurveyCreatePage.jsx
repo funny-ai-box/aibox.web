@@ -12,7 +12,9 @@ import {
   Spin,
   Divider,
   Alert,
-  Modal
+  Modal,
+  Steps,
+  Result
 } from 'antd';
 import {
   SaveOutlined,
@@ -21,7 +23,9 @@ import {
   ArrowLeftOutlined,
   CheckCircleOutlined,
   RobotOutlined,
-  InfoCircleOutlined
+  InfoCircleOutlined,
+  FileTextOutlined,
+  EditOutlined
 } from '@ant-design/icons';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import surveyAPI from '../../api/surveyAPI';
@@ -30,10 +34,11 @@ import SurveyEditor from './components/SurveyEditor';
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
-const { TabPane } = Tabs;
+const { Step } = Steps;
 
 /**
- * 问卷创建/编辑页面
+ * 问卷创建/编辑页面 - 优化版
+ * 使用步骤导航和卡片布局取代标签页
  */
 const SurveyCreatePage = () => {
   const { taskId } = useParams();
@@ -42,7 +47,7 @@ const SurveyCreatePage = () => {
   
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('basic');
+  const [currentStep, setCurrentStep] = useState(0);
   const [surveyData, setSurveyData] = useState(null);
   const [isEdit, setIsEdit] = useState(false);
   
@@ -112,6 +117,8 @@ const SurveyCreatePage = () => {
         } else {
           // 刷新问卷数据
           fetchSurveyDetail();
+          // 移动到下一步
+          setCurrentStep(1);
         }
       } else {
         message.error(response.message || (isEdit ? '更新问卷失败' : '创建问卷失败'));
@@ -149,8 +156,16 @@ const SurveyCreatePage = () => {
       
       if (response.code === 200) {
         message.success('问卷已发布');
-        // 跳转到问卷列表
-        navigate('/survey');
+        
+        // 显示发布成功弹窗
+        Modal.success({
+          title: '问卷发布成功',
+          content: '您的问卷已成功发布，现在可以分享给用户填写了',
+          okText: '返回列表',
+          onOk: () => {
+            navigate('/survey');
+          }
+        });
       } else {
         message.error(response.message || '发布问卷失败');
       }
@@ -165,9 +180,22 @@ const SurveyCreatePage = () => {
     navigate('/survey');
   };
   
-  // 处理标签页切换
-  const handleTabChange = (key) => {
-    setActiveTab(key);
+  // 渲染步骤内容
+  const renderStepContent = () => {
+    if (loading) {
+      return <Spin tip="加载中..." />;
+    }
+    
+    switch (currentStep) {
+      case 0:
+        return renderBasicForm();
+      case 1:
+        return renderAIDesignPanel();
+      case 2:
+        return renderSurveyEditor();
+      default:
+        return null;
+    }
   };
   
   // 渲染基本信息表单
@@ -206,7 +234,7 @@ const SurveyCreatePage = () => {
                 onClick={handleSaveBasic}
                 loading={saving}
               >
-                保存信息
+                {isEdit ? '保存并继续' : '创建问卷'}
               </Button>
               
               {isEdit && surveyData && (
@@ -217,21 +245,10 @@ const SurveyCreatePage = () => {
                   >
                     预览问卷
                   </Button>
-                  
-                  {surveyData.status === 0 && (
-                    <Button 
-                      type="primary"
-                      icon={<CheckCircleOutlined />}
-                      onClick={publishSurvey}
-                    >
-                      发布问卷
-                    </Button>
-                  )}
                 </Space>
               )}
             </Space>
           </Form.Item>
-          
         </Form>
       </Card>
     );
@@ -243,14 +260,29 @@ const SurveyCreatePage = () => {
       return (
         <Alert
           message="保存基本信息"
-          description="请先在基本信息标签页保存问卷基本信息，才能使用AI设计功能"
+          description="请先保存问卷基本信息，才能使用AI设计功能"
           type="info"
           showIcon
         />
       );
     }
     
-    return <AIDesignChat taskId={taskId} onDesignComplete={fetchSurveyDetail} />;
+    return (
+      <Card>
+        <AIDesignChat taskId={taskId} onDesignComplete={fetchSurveyDetail} />
+        
+        <Divider />
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <Button onClick={() => setCurrentStep(0)}>
+            <ArrowLeftOutlined /> 上一步
+          </Button>
+          <Button type="primary" onClick={() => setCurrentStep(2)}>
+            继续编辑问卷 <EditOutlined />
+          </Button>
+        </div>
+      </Card>
+    );
   };
   
   // 渲染问卷编辑器
@@ -259,7 +291,7 @@ const SurveyCreatePage = () => {
       return (
         <Alert
           message="保存基本信息"
-          description="请先在基本信息标签页保存问卷基本信息，才能编辑问卷内容"
+          description="请先在基本信息步骤保存问卷基本信息，才能编辑问卷内容"
           type="info"
           showIcon
         />
@@ -270,7 +302,34 @@ const SurveyCreatePage = () => {
       return <Spin tip="加载问卷数据..." />;
     }
     
-    return <SurveyEditor surveyData={surveyData} taskId={taskId} onSaved={fetchSurveyDetail} />;
+    return (
+      <div>
+        <SurveyEditor surveyData={surveyData} taskId={taskId} onSaved={fetchSurveyDetail} />
+        
+        <Divider />
+        
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '16px' }}>
+          <Space>
+            <Button onClick={() => setCurrentStep(1)}>
+              <ArrowLeftOutlined /> 返回AI设计
+            </Button>
+            <Button icon={<EyeOutlined />} onClick={previewSurvey}>
+              预览问卷
+            </Button>
+          </Space>
+          
+          {surveyData.status === 0 && (
+            <Button 
+              type="primary"
+              icon={<CheckCircleOutlined />}
+              onClick={publishSurvey}
+            >
+              发布问卷
+            </Button>
+          )}
+        </div>
+      </div>
+    );
   };
   
   return (
@@ -297,48 +356,37 @@ const SurveyCreatePage = () => {
       </Card>
       
       <Spin spinning={loading}>
-        <Tabs activeKey={activeTab} onChange={handleTabChange}>
-          <TabPane
-            tab={
-              <span>
-                <FormOutlined />
-                基本信息
-              </span>
-            }
-            key="basic"
-          >
-            {renderBasicForm()}
-          </TabPane>
-          
-          <TabPane
-            tab={
-              <span>
-                <RobotOutlined />
-                AI智能设计
-              </span>
-            }
-            key="ai-design"
-            disabled={!isEdit}
-          >
-            {renderAIDesignPanel()}
-          </TabPane>
-          
-          <TabPane
-            tab={
-              <span>
-                <FormOutlined />
-                问卷编辑
-              </span>
-            }
-            key="editor"
-            disabled={!isEdit}
-          >
-            {renderSurveyEditor()}
-          </TabPane>
-        </Tabs>
-      </Spin>
-    </div>
-  );
+        <Card style={{ marginBottom: '16px' }}>
+          <Steps 
+            current={currentStep}
+            onChange={setCurrentStep}
+            items={[
+              {
+                
+title: '基本信息',
+description: '设置问卷标题和说明',
+icon: <FileTextOutlined />
+},
+{
+title: 'AI智能设计',
+description: '使用AI智能设计问卷结构',
+icon: <RobotOutlined />,
+disabled: !isEdit
+},
+{
+title: '问卷编辑',
+description: '编辑问卷的部分和字段',
+icon: <FormOutlined />,
+disabled: !isEdit
+}
+]}
+/>
+</Card>
+
+{renderStepContent()}
+</Spin>
+</div>
+);
 };
 
 export default SurveyCreatePage;
