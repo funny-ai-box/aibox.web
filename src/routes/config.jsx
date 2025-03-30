@@ -63,6 +63,13 @@ import SurveyPreviewPage from '../apps/Survey/SurveyPreviewPage';
 import SurveyStatsPage from '../apps/Survey/SurveyStatsPage';
 
 
+// 播客
+
+import PodcastLayout from '../apps/Podcast/PodcastLayout';
+import PodcastHome from '../apps/Podcast/PodcastHome';
+import CreatePodcastPage from '../apps/Podcast/CreatePodcastPage';
+import PodcastDetailPage from '../apps/Podcast/PodcastDetailPage';
+
 
 
 /**
@@ -147,7 +154,19 @@ export const appCards = [
     icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M9 5H7C5.89543 5 5 5.89543 5 7V19C5 20.1046 5.89543 21 7 21H17C18.1046 21 19 20.1046 19 19V7C19 5.89543 18.1046 5 17 5H15M9 5C9 6.10457 9.89543 7 11 7H13C14.1046 7 15 6.10457 15 5M9 5C9 3.89543 9.89543 3 11 3H13C14.1046 3 15 3.89543 15 5M12 12H15M12 16H15M9 12H9.01M9 16H9.01" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" />
     </svg>
+  },
+  {
+    id: 6,
+    title: "AI播客生成工具",
+    path: "/podcast",
+    description: "AI智能生成多人播客内容，基于上传内容自动产生逼真对话剧本并合成音频，打造专业播客节目",
+    category: "音频处理",
+    badge: "新",
+    icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 15.5v-7m3 1.5v4m-6-4v4m-4 2h14a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2z" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
   }
+  
 ];
 
 // 为了兼容性，再导出一次旧名称
@@ -368,6 +387,28 @@ const routes = [
       }
     ]
   },
+  {
+    path: '/podcast',
+    element: (
+      <ProtectedRoute>
+        <PodcastLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true, // 默认子路由
+        element: <PodcastHome />
+      },
+      {
+        path: 'create', // 创建播客页面
+        element: <CreatePodcastPage />
+      },
+      {
+        path: 'task/:taskId', // 任务详情页面
+        element: <PodcastDetailPage />
+      }
+    ]
+  },  
   
   // 捕获所有不匹配的路由
   {
