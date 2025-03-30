@@ -13,7 +13,9 @@ import {
   Divider,
   Row,
   Col,
-  Statistic
+  Statistic,
+  Input,
+  Empty
 } from 'antd';
 import {
   PlusOutlined,
@@ -26,16 +28,22 @@ import {
   ReloadOutlined,
   HourglassOutlined,
   LoadingOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  SearchOutlined,
+  AudioOutlined,
+  FileTextOutlined,
+  UsergroupAddOutlined,
+  FieldTimeOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import podcastAPI from '../../api/podcastAPI';
 
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 const { confirm } = Modal;
+const { Search } = Input;
 
 /**
- * 播客工具首页组件
+ * 播客工具首页组件 - 增强科技感版本
  */
 const PodcastHome = () => {
   const navigate = useNavigate();
@@ -53,6 +61,7 @@ const PodcastHome = () => {
     processingTasks: 0,
     failedTasks: 0
   });
+  const [searchKeyword, setSearchKeyword] = useState('');
   
   // 初始化加载
   useEffect(() => {
@@ -160,6 +169,22 @@ const PodcastHome = () => {
     }
   };
   
+  // 搜索任务
+  const handleSearch = (value) => {
+    setSearchKeyword(value);
+  };
+  
+  // 筛选任务列表
+  const getFilteredTasks = () => {
+    if (!searchKeyword) return taskList;
+    
+    return taskList.filter(task => 
+      task.title.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+      task.scene.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+      task.description.toLowerCase().includes(searchKeyword.toLowerCase())
+    );
+  };
+  
   // 渲染任务状态标签
   const renderStatusTag = (status) => {
     switch (status) {
@@ -193,7 +218,9 @@ const PodcastHome = () => {
       key: 'title',
       ellipsis: true,
       render: (text, record) => (
-        <a onClick={() => viewTaskDetail(record.id)}>{text}</a>
+        <a onClick={() => viewTaskDetail(record.id)} className="task-title-link">
+          {text}
+        </a>
       )
     },
     {
@@ -244,6 +271,10 @@ const PodcastHome = () => {
             record.status === 2 ? 'active' : 'normal'
           }
           size="small"
+          strokeColor={{
+            '0%': '#108ee9',
+            '100%': '#1890ff',
+          }}
         />
       )
     },
@@ -265,6 +296,7 @@ const PodcastHome = () => {
             size="small"
             icon={<EyeOutlined />}
             onClick={() => viewTaskDetail(record.id)}
+            className="action-button view-button"
           >
             查看
           </Button>
@@ -276,6 +308,7 @@ const PodcastHome = () => {
               size="small" 
               icon={<PlayCircleOutlined />} 
               onClick={() => startGenerate(record.id)}
+              className="action-button generate-button"
             >
               开始生成
             </Button>
@@ -286,6 +319,7 @@ const PodcastHome = () => {
             size="small" 
             icon={<DeleteOutlined />} 
             onClick={() => confirmDeleteTask(record.id)}
+            className="action-button delete-button"
           >
             删除
           </Button>
@@ -294,17 +328,59 @@ const PodcastHome = () => {
     }
   ];
   
+  const filteredTasks = getFilteredTasks();
+  
   return (
-    <div>
-      <Card style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <Title level={4}>AI播客生成工具</Title>
+    <div className="podcast-home-container">
+      <Card
+        className="main-card"
+        style={{ 
+          marginBottom: '24px', 
+          borderRadius: '12px',
+          overflow: 'hidden',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+          background: 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(10px)'
+        }}
+      >
+        <div 
+          className="header-section" 
+          style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            marginBottom: '24px',
+            position: 'relative'
+          }}
+        >
+          <Title 
+            level={4} 
+            className="gradient-title"
+            style={{
+              background: 'linear-gradient(90deg, #1890ff, #096dd9)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontWeight: 'bold'
+            }}
+          >
+            AI播客任务列表
+          </Title>
           
           <Space>
+            <Search
+              placeholder="搜索播客任务..."
+              allowClear
+              onSearch={handleSearch}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              style={{ width: 250 }}
+              className="search-input"
+            />
             <Button 
               icon={<ReloadOutlined />} 
               onClick={fetchTaskList}
               loading={loading}
+              className="refresh-button"
             >
               刷新
             </Button>
@@ -312,76 +388,366 @@ const PodcastHome = () => {
               type="primary" 
               icon={<PlusOutlined />}
               onClick={createNewTask}
+              className="create-button"
             >
               创建播客
             </Button>
           </Space>
+          
+          {/* 装饰性线条 */}
+          <div 
+            className="decoration-line" 
+            style={{
+              position: 'absolute',
+              bottom: '-12px',
+              left: '0',
+              right: '0',
+              height: '2px',
+              background: 'linear-gradient(90deg, transparent, #1890ff, transparent)'
+            }}
+          />
         </div>
         
-        <Divider />
+        <Divider style={{ margin: '12px 0 24px' }} />
         
-        <Row gutter={24} style={{ marginBottom: '24px' }}>
+        <Row 
+          gutter={24} 
+          style={{ marginBottom: '32px' }}
+          className="statistics-row"
+        >
           <Col span={6}>
-            <Card bordered={false}>
+            <Card 
+              bordered={false}
+              className="statistics-card"
+              style={{
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #e6f7ff, #f0f5ff)',
+                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
+                transition: 'all 0.3s ease'
+              }}
+            >
               <Statistic
-                title="任务总数"
+                title={
+                  <div style={{ color: '#1890ff', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                    <AudioOutlined style={{ marginRight: '8px' }} />
+                    任务总数
+                  </div>
+                }
                 value={statistics.totalTasks}
-                prefix={<PlayCircleOutlined />}
-                valueStyle={{ color: '#1890ff' }}
+                valueStyle={{ color: '#1890ff', fontWeight: 'bold' }}
               />
             </Card>
           </Col>
           <Col span={6}>
-            <Card bordered={false}>
+            <Card 
+              bordered={false}
+              className="statistics-card"
+              style={{
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #f6ffed, #e6fffb)',
+                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
+                transition: 'all 0.3s ease'
+              }}
+            >
               <Statistic
-                title="已完成任务"
+                title={
+                  <div style={{ color: '#52c41a', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                    <CheckCircleOutlined style={{ marginRight: '8px' }} />
+                    已完成任务
+                  </div>
+                }
                 value={statistics.completedTasks}
-                prefix={<CheckCircleOutlined />}
-                valueStyle={{ color: '#52c41a' }}
+                valueStyle={{ color: '#52c41a', fontWeight: 'bold' }}
               />
             </Card>
           </Col>
           <Col span={6}>
-            <Card bordered={false}>
+            <Card 
+              bordered={false}
+              className="statistics-card"
+              style={{
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #f9f0ff, #efdbff)',
+                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
+                transition: 'all 0.3s ease'
+              }}
+            >
               <Statistic
-                title="处理中任务"
+                title={
+                  <div style={{ color: '#722ed1', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                    <SyncOutlined style={{ marginRight: '8px' }} />
+                    处理中任务
+                  </div>
+                }
                 value={statistics.processingTasks}
-                prefix={<SyncOutlined />}
-                valueStyle={{ color: '#722ed1' }}
+                valueStyle={{ color: '#722ed1', fontWeight: 'bold' }}
               />
             </Card>
           </Col>
           <Col span={6}>
-            <Card bordered={false}>
+            <Card 
+              bordered={false}
+              className="statistics-card"
+              style={{
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #fff2f0, #ffedeb)',
+                boxShadow: '0 2px 10px rgba(0, 0, 0, 0.05)',
+                transition: 'all 0.3s ease'
+              }}
+            >
               <Statistic
-                title="失败任务"
+                title={
+                  <div style={{ color: '#f5222d', fontWeight: 'bold', display: 'flex', alignItems: 'center' }}>
+                    <CloseCircleOutlined style={{ marginRight: '8px' }} />
+                    失败任务
+                  </div>
+                }
                 value={statistics.failedTasks}
-                prefix={<CloseCircleOutlined />}
-                valueStyle={{ color: '#f5222d' }}
+                valueStyle={{ color: '#f5222d', fontWeight: 'bold' }}
               />
             </Card>
           </Col>
         </Row>
         
-        <Table
-          columns={columns}
-          dataSource={taskList}
-          rowKey="id"
-          loading={loading}
-          pagination={{
-            ...pagination,
-            onChange: (page, pageSize) => {
-              setPagination({
-                ...pagination,
-                current: page,
-                pageSize
-              });
-            },
-            showSizeChanger: true,
-            showTotal: (total) => `共 ${total} 条记录`
-          }}
-        />
+        {filteredTasks.length === 0 ? (
+          <Empty 
+            image={Empty.PRESENTED_IMAGE_SIMPLE} 
+            description={
+              <span style={{ color: '#8c8c8c' }}>
+                {loading ? '正在加载数据...' : (searchKeyword ? '没有找到匹配的播客任务' : '暂无播客任务')}
+              </span>
+            }
+          >
+            <Button type="primary" icon={<PlusOutlined />} onClick={createNewTask}>
+              创建播客
+            </Button>
+          </Empty>
+        ) : (
+          <Table
+            columns={columns}
+            dataSource={filteredTasks}
+            rowKey="id"
+            loading={loading}
+            className="podcast-table"
+            style={{ 
+              borderRadius: '8px',
+              overflow: 'hidden'
+            }}
+            pagination={{
+              ...pagination,
+              onChange: (page, pageSize) => {
+                setPagination({
+                  ...pagination,
+                  current: page,
+                  pageSize
+                });
+              },
+              showSizeChanger: true,
+              showTotal: (total) => `共 ${total} 条记录`,
+              style: { marginTop: '16px' },
+              className: 'custom-pagination'
+            }}
+            rowClassName={(record, index) => 
+              `podcast-table-row ${index % 2 === 0 ? 'even-row' : 'odd-row'}`
+            }
+          />
+        )}
       </Card>
+      
+      {/* 添加动态视觉效果的样式 */}
+      <style jsx="true">{`
+        .podcast-home-container {
+          position: relative;
+        }
+        
+        .main-card {
+          transition: all 0.3s ease;
+        }
+        
+        .main-card:hover {
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+        }
+        
+        .statistics-card {
+          transition: all 0.3s ease;
+        }
+        
+        .statistics-card:hover {
+          transform: translateY(-5px);
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+        }
+        
+        .task-title-link {
+          color: #1890ff;
+          transition: all 0.3s;
+          position: relative;
+        }
+        
+        .task-title-link:hover {
+          color: #096dd9;
+        }
+        
+        .task-title-link:after {
+          content: '';
+          position: absolute;
+          width: 0;
+          height: 2px;
+          bottom: -2px;
+          left: 0;
+          background-color: #1890ff;
+          visibility: hidden;
+          transition: all 0.3s ease-in-out;
+        }
+        
+        .task-title-link:hover:after {
+          visibility: visible;
+          width: 100%;
+        }
+        
+        .action-button {
+          transition: all 0.3s;
+          position: relative;
+          overflow: hidden;
+        }
+        
+        .action-button:hover {
+          transform: translateY(-2px);
+        }
+        
+        .action-button:after {
+          content: "";
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 5px;
+          height: 5px;
+          background: rgba(255, 255, 255, 0.5);
+          opacity: 0;
+          border-radius: 100%;
+          transform: scale(1, 1) translate(-50%);
+          transform-origin: 50% 50%;
+        }
+        
+        .action-button:hover:after {
+          animation: ripple 1s ease-out;
+        }
+        
+        @keyframes ripple {
+          0% {
+            transform: scale(0, 0);
+            opacity: 0.5;
+          }
+          100% {
+            transform: scale(20, 20);
+            opacity: 0;
+          }
+        }
+        
+        .podcast-table-row {
+          transition: all 0.3s;
+        }
+        
+        .podcast-table-row:hover {
+          background-color: rgba(24, 144, 255, 0.05) !important;
+        }
+        
+        .even-row {
+          background-color: rgba(250, 250, 250, 0.5);
+        }
+        
+        .odd-row {
+          background-color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .custom-pagination .ant-pagination-item-active {
+          background-color: #1890ff;
+          border-color: #1890ff;
+        }
+        
+        .custom-pagination .ant-pagination-item-active a {
+          color: white;
+        }
+        
+        .search-input .ant-input {
+          border-radius: 8px;
+          transition: all 0.3s;
+        }
+        
+        .search-input .ant-input:focus,
+        .search-input .ant-input:hover {
+          border-color: #1890ff;
+          box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+        }
+        
+        .search-input .ant-input-suffix {
+          color: #1890ff;
+        }
+        
+        .refresh-button,
+        .create-button {
+          border-radius: 8px;
+          transition: all 0.3s;
+        }
+        
+        .create-button {
+          background: linear-gradient(90deg, #1890ff, #096dd9);
+          border: none;
+          box-shadow: 0 2px 6px rgba(24, 144, 255, 0.3);
+        }
+        
+        .create-button:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(24, 144, 255, 0.4);
+        }
+        
+        .decoration-line {
+          animation: glow 2s ease-in-out infinite;
+        }
+        
+        @keyframes glow {
+          0% {
+            opacity: 0.2;
+          }
+          50% {
+            opacity: 0.8;
+          }
+          100% {
+            opacity: 0.2;
+          }
+        }
+        
+        /* 添加音频波形动画 */
+        .podcast-home-container:before {
+          content: '';
+          position: absolute;
+          top: 20px;
+          right: 20px;
+          width: 100px;
+          height: 60px;
+          background-image: 
+            linear-gradient(90deg, transparent 0%, transparent 20%, #1890ff 20%, #1890ff 23%, transparent 23%, transparent 30%, 
+            #1890ff 30%, #1890ff 35%, transparent 35%, transparent 40%, 
+            #1890ff 40%, #1890ff 43%, transparent 43%, transparent 50%, 
+            #1890ff 50%, #1890ff 53%, transparent 53%, transparent 60%, 
+            #1890ff 60%, #1890ff 65%, transparent 65%, transparent 70%, 
+            #1890ff 70%, #1890ff 73%, transparent 73%, transparent 80%, 
+            #1890ff 80%, #1890ff 83%, transparent 83%, transparent 100%);
+          background-size: 200% 100%;
+          background-position: 0% 0%;
+          opacity: 0.1;
+          animation: wave 3s linear infinite;
+          pointer-events: none;
+        }
+        
+        @keyframes wave {
+          0% {
+            background-position: 0% 0%;
+          }
+          100% {
+            background-position: 200% 0%;
+          }
+        }
+      `}</style>
     </div>
   );
 };

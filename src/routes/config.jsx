@@ -156,7 +156,7 @@ export const appCards = [
     </svg>
   },
   {
-    id: 6,
+    id: 8,
     title: "AI播客生成工具",
     path: "/podcast",
     description: "AI智能生成多人播客内容，基于上传内容自动产生逼真对话剧本并合成音频，打造专业播客节目",

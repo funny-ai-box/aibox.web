@@ -19,7 +19,8 @@ import {
   Modal,
   Tooltip,
   Badge,
-  Spin
+  Spin,
+  Switch
 } from 'antd';
 import {
   PlayCircleOutlined,
@@ -35,18 +36,21 @@ import {
   HourglassOutlined,
   ReloadOutlined,
   DeleteOutlined,
-  ExclamationCircleOutlined
+  ExclamationCircleOutlined,
+  StepForwardOutlined,
+  StepBackwardOutlined,
+  CaretRightOutlined,
+  DownloadOutlined
 } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import podcastAPI from '../../api/podcastAPI';
 
 const { Title, Text, Paragraph } = Typography;
-const { TabPane } = Tabs;
 const { Panel } = Collapse;
 const { confirm } = Modal;
 
 /**
- * 播客详情页面
+ * 播客详情页面 - 增强版本
  */
 const PodcastDetailPage = () => {
   const { taskId } = useParams();
@@ -56,6 +60,9 @@ const PodcastDetailPage = () => {
   const [taskDetail, setTaskDetail] = useState(null);
   const [currentPlayingIndex, setCurrentPlayingIndex] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [autoPlay, setAutoPlay] = useState(false);
+  const [sortedScripts, setSortedScripts] = useState([]);
+  const [activeTabKey, setActiveTabKey] = useState('script');
   
   // 音频播放器引用
   const audioRef = useRef(new Audio());
@@ -73,13 +80,18 @@ const PodcastDetailPage = () => {
     };
   }, [taskId]);
   
-  // 播放音频时的事件监听
+  // 处理音频事件
   useEffect(() => {
     const audio = audioRef.current;
     
     const handleEnded = () => {
-      setIsPlaying(false);
-      setCurrentPlayingIndex(null);
+      if (autoPlay && currentPlayingIndex !== null && sortedScripts.length > currentPlayingIndex + 1) {
+        // 如果开启了自动播放并且有下一条音频，播放下一条
+        playNext();
+      } else {
+        setIsPlaying(false);
+        setCurrentPlayingIndex(null);
+      }
     };
     
     audio.addEventListener('ended', handleEnded);
@@ -87,7 +99,17 @@ const PodcastDetailPage = () => {
     return () => {
       audio.removeEventListener('ended', handleEnded);
     };
-  }, []);
+  }, [autoPlay, currentPlayingIndex, sortedScripts]);
+  
+  // 当排序的脚本变化或当前播放索引变化时，滚动到当前播放项
+  useEffect(() => {
+    if (currentPlayingIndex !== null && isPlaying) {
+      const scriptItem = document.getElementById(`script-item-${currentPlayingIndex}`);
+      if (scriptItem) {
+        scriptItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  }, [currentPlayingIndex, isPlaying]);
   
   // 获取播客任务详情
   const fetchTaskDetail = async () => {
@@ -97,6 +119,12 @@ const PodcastDetailPage = () => {
       
       if (response.code === 200) {
         setTaskDetail(response.data);
+        
+        // 按顺序排序脚本
+        if (response.data.scriptItems && response.data.scriptItems.length > 0) {
+          const sorted = [...response.data.scriptItems].sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+          setSortedScripts(sorted);
+        }
       } else {
         message.error(response.message || '获取播客详情失败');
       }
@@ -132,6 +160,50 @@ const PodcastDetailPage = () => {
         console.error('播放音频失败:', error);
         message.error('播放音频失败');
       });
+  };
+  
+  // 播放下一个音频
+  const playNext = () => {
+    if (currentPlayingIndex === null || sortedScripts.length === 0) return;
+    
+    const nextIndex = currentPlayingIndex + 1;
+    if (nextIndex < sortedScripts.length) {
+      const nextScript = sortedScripts[nextIndex];
+      if (nextScript.audioStatus === 2) { // 只播放已生成的音频
+        playAudio(nextScript.audioUrl, nextIndex);
+      }
+    }
+  };
+  
+  // 播放上一个音频
+  const playPrevious = () => {
+    if (currentPlayingIndex === null || sortedScripts.length === 0) return;
+    
+    const prevIndex = currentPlayingIndex - 1;
+    if (prevIndex >= 0) {
+      const prevScript = sortedScripts[prevIndex];
+      if (prevScript.audioStatus === 2) { // 只播放已生成的音频
+        playAudio(prevScript.audioUrl, prevIndex);
+      }
+    }
+  };
+  
+  // 播放/暂停所有
+  const togglePlayAll = () => {
+    if (isPlaying) {
+      // 如果正在播放，则暂停
+      audioRef.current.pause();
+      setIsPlaying(false);
+    } else {
+      // 如果没有播放，则从头开始播放
+      if (sortedScripts.length > 0) {
+        // 找到第一个可播放的脚本
+        const firstPlayableIndex = sortedScripts.findIndex(script => script.audioStatus === 2);
+        if (firstPlayableIndex !== -1) {
+          playAudio(sortedScripts[firstPlayableIndex].audioUrl, firstPlayableIndex);
+        }
+      }
+    }
   };
   
   // 开始生成播客
@@ -216,8 +288,14 @@ const PodcastDetailPage = () => {
     
     return (
       <Card 
-        title="播客基本信息" 
-        style={{ marginBottom: '24px' }}
+        title={
+          <Space>
+            <span className="gradient-text">播客详情</span>
+            {renderStatusTag(taskDetail.status)}
+          </Space>
+        }
+        className="task-info-card"
+        style={{ marginBottom: '24px', borderRadius: '12px', overflow: 'hidden' }}
         extra={
           <Space>
             <Button 
@@ -309,7 +387,7 @@ const PodcastDetailPage = () => {
     }
     
     return (
-      <Collapse defaultActiveKey={['1']}>
+      <Collapse defaultActiveKey={['1']} className="content-collapse">
         {taskDetail.contentItems.map((content, index) => (
           <Panel 
             header={
@@ -340,8 +418,8 @@ const PodcastDetailPage = () => {
                   maxHeight: '300px', 
                   overflow: 'auto',
                   padding: '12px',
-                  background: '#f9f9f9',
-                  borderRadius: '4px'
+                  background: 'rgba(0, 0, 0, 0.02)',
+                  borderRadius: '8px'
                 }}
               >
                 {content.sourceContent || '没有内容'}
@@ -372,80 +450,180 @@ const PodcastDetailPage = () => {
       );
     }
     
-    // 按顺序排序脚本
-    const sortedScripts = [...taskDetail.scriptItems].sort((a, b) => a.sequenceNumber - b.sequenceNumber);
+    // 播放控制区域
+    const renderPlayControls = () => (
+      <Card className="play-controls-card" style={{ marginBottom: '16px', borderRadius: '8px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <Space>
+              <Button 
+                type="primary" 
+                shape="circle" 
+                icon={<StepBackwardOutlined />} 
+                onClick={playPrevious}
+                disabled={currentPlayingIndex === null || currentPlayingIndex === 0}
+              />
+              <Button 
+                type="primary" 
+                shape="circle" 
+                size="large"
+                icon={isPlaying ? <PauseCircleOutlined /> : <CaretRightOutlined />} 
+                onClick={togglePlayAll}
+                disabled={sortedScripts.length === 0}
+              />
+              <Button 
+                type="primary" 
+                shape="circle" 
+                icon={<StepForwardOutlined />} 
+                onClick={playNext}
+                disabled={currentPlayingIndex === null || currentPlayingIndex === sortedScripts.length - 1}
+              />
+            </Space>
+          </div>
+          
+          <div>
+            <Space>
+              <Text>连续播放</Text>
+              <Switch 
+                checked={autoPlay} 
+                onChange={setAutoPlay} 
+                checkedChildren="开启" 
+                unCheckedChildren="关闭"
+              />
+            </Space>
+          </div>
+          
+          {currentPlayingIndex !== null && (
+            <div>
+              <Tag color="blue">
+                正在播放: {sortedScripts[currentPlayingIndex]?.roleName} - 
+                脚本 #{currentPlayingIndex + 1}/{sortedScripts.length}
+              </Tag>
+            </div>
+          )}
+        </div>
+      </Card>
+    );
     
     return (
-      <List
-        itemLayout="vertical"
-        dataSource={sortedScripts}
-        renderItem={(script, index) => (
-          <List.Item
-            key={script.id}
-            actions={[
-              <Space>
-                <Button
-                  type="primary"
-                  shape="circle"
-                  icon={currentPlayingIndex === index && isPlaying ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
-                  onClick={() => playAudio(script.audioUrl, index)}
-                  disabled={script.audioStatus !== 2}
-                />
-                <Text>{script.audioDuration}</Text>
-              </Space>
-            ]}
-            style={{ background: index % 2 === 0 ? 'transparent' : '#f9f9f9', padding: '16px' }}
-          >
-            <List.Item.Meta
-              avatar={
-                <Avatar
-                  icon={<UserOutlined />}
-                  style={{ 
-                    background: script.roleType === 1 ? '#1890ff' : '#52c41a',
-                    marginTop: '4px'
-                  }}
-                />
-              }
-              title={
-                <Space>
-                  <Text strong>{script.roleName}</Text>
-                  <Tag color={script.roleType === 1 ? 'blue' : 'green'}>
-                    {script.roleTypeDescription}
-                  </Tag>
-                  <Tag color="purple">
-                    {script.voiceName} - {script.voiceDescription}
-                  </Tag>
-                </Space>
-              }
-              description={
-                <Text type="secondary">
-                  <SoundOutlined style={{ marginRight: '8px' }} />
-                  {script.audioStatus === 0 ? "待生成" : 
-                   script.audioStatus === 1 ? "生成中" : 
-                   script.audioStatus === 2 ? "已生成" : "生成失败"}
-                </Text>
-              }
-            />
-            <Paragraph
+      <div>
+        {renderPlayControls()}
+        
+        <List
+          itemLayout="vertical"
+          dataSource={sortedScripts}
+          renderItem={(script, index) => (
+            <List.Item
+              key={script.id}
+              id={`script-item-${index}`}
+              className={`script-item ${currentPlayingIndex === index && isPlaying ? 'playing' : ''}`}
               style={{ 
-                marginTop: '12px', 
-                padding: '12px', 
-                background: '#f5f5f5', 
-                borderRadius: '4px',
-                border: currentPlayingIndex === index && isPlaying ? '1px solid #1890ff' : '1px solid transparent'
+                borderRadius: '8px',
+                marginBottom: '12px',
+                background: index % 2 === 0 ? 'rgba(0, 0, 0, 0.02)' : 'transparent',
+                padding: '16px',
+                transition: 'all 0.3s ease',
+                border: currentPlayingIndex === index ? '2px solid #1890ff' : '2px solid transparent',
+                position: 'relative'
               }}
+              actions={[
+                <Space>
+                  <Button
+                    type="primary"
+                    shape="circle"
+                    icon={currentPlayingIndex === index && isPlaying ? <PauseCircleOutlined /> : <PlayCircleOutlined />}
+                    onClick={() => playAudio(script.audioUrl, index)}
+                    disabled={script.audioStatus !== 2}
+                  />
+                  <Text>{script.audioDuration}</Text>
+                  {script.audioStatus === 2 && (
+                    <a href={script.audioUrl} download target="_blank" rel="noopener noreferrer">
+                      <Button 
+                        type="text" 
+                        icon={<DownloadOutlined />} 
+                        size="small"
+                      >
+                        下载
+                      </Button>
+                    </a>
+                  )}
+                </Space>
+              ]}
             >
-              {script.content}
-            </Paragraph>
-          </List.Item>
-        )}
-      />
+              {currentPlayingIndex === index && isPlaying && (
+                <div 
+                  style={{ 
+                    position: 'absolute', 
+                    top: '-8px', 
+                    right: '16px',
+                    background: '#1890ff',
+                    color: 'white',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px'
+                  }}
+                >
+                  正在播放
+                </div>
+              )}
+              
+              <List.Item.Meta
+                avatar={
+                  <Avatar
+                    size="large"
+                    icon={<UserOutlined />}
+                    style={{ 
+                      background: script.roleType === 1 ? 'linear-gradient(135deg, #1890ff, #096dd9)' : 'linear-gradient(135deg, #52c41a, #389e0d)',
+                      marginTop: '4px'
+                    }}
+                  />
+                }
+                title={
+                  <Space>
+                    <Text strong style={{ fontSize: '16px' }}>{script.roleName}</Text>
+                    <Tag color={script.roleType === 1 ? 'blue' : 'green'}>
+                      {script.roleTypeDescription}
+                    </Tag>
+                    <Tag color="purple">
+                      {script.voiceName} - {script.voiceDescription}
+                    </Tag>
+                  </Space>
+                }
+                description={
+                  <Text type="secondary">
+                    <SoundOutlined style={{ marginRight: '8px' }} />
+                    {script.audioStatus === 0 ? "待生成" : 
+                     script.audioStatus === 1 ? "生成中" : 
+                     script.audioStatus === 2 ? "已生成" : "生成失败"}
+                  </Text>
+                }
+              />
+              <Paragraph
+                style={{ 
+                  marginTop: '12px', 
+                  padding: '16px', 
+                  background: 'rgba(255, 255, 255, 0.8)', 
+                  borderRadius: '8px',
+                  borderLeft: currentPlayingIndex === index && isPlaying ? '4px solid #1890ff' : '4px solid transparent'
+                }}
+              >
+                {script.content}
+              </Paragraph>
+            </List.Item>
+          )}
+        />
+      </div>
     );
+  };
+  
+  // 标签页切换
+  const handleTabChange = (key) => {
+    setActiveTabKey(key);
   };
   
   if (loading && !taskDetail) {
     return (
-      <Card>
+      <Card className="loading-card" style={{ borderRadius: '12px' }}>
         <Skeleton active paragraph={{ rows: 10 }} />
       </Card>
     );
@@ -453,7 +631,7 @@ const PodcastDetailPage = () => {
   
   if (!taskDetail) {
     return (
-      <Card>
+      <Card className="not-found-card" style={{ borderRadius: '12px' }}>
         <Empty 
           description="未找到播客任务" 
           image={Empty.PRESENTED_IMAGE_SIMPLE}
@@ -467,41 +645,113 @@ const PodcastDetailPage = () => {
   }
   
   return (
-    <div>
+    <div className="podcast-detail-container">
       {renderTaskInfo()}
       
-      <Tabs defaultActiveKey="script" style={{ marginBottom: '24px' }}>
-        <TabPane
-          tab={
-            <span>
-              <FileTextOutlined />
-              内容素材
-              <Badge 
-                count={taskDetail.contentItems ? taskDetail.contentItems.length : 0} 
-                style={{ marginLeft: '8px', backgroundColor: '#52c41a' }}
-              />
-            </span>
+      <Card 
+        className="content-card"
+        style={{ 
+          borderRadius: '12px', 
+          overflow: 'hidden',
+          background: 'linear-gradient(to bottom, rgba(240, 242, 245, 0.8), rgba(240, 242, 245, 0.3))'
+        }}
+      >
+        <Tabs 
+          activeKey={activeTabKey} 
+          onChange={handleTabChange}
+          items={[
+            {
+              key: 'script',
+              label: (
+                <span>
+                  <SoundOutlined />
+                  播客脚本
+                  <Badge 
+                    count={taskDetail.scriptItems ? taskDetail.scriptItems.length : 0} 
+                    style={{ marginLeft: '8px', backgroundColor: '#1890ff' }}
+                  />
+                </span>
+              ),
+              children: renderScriptList()
+            },
+            {
+              key: 'content',
+              label: (
+                <span>
+                  <FileTextOutlined />
+                  内容素材
+                  <Badge 
+                    count={taskDetail.contentItems ? taskDetail.contentItems.length : 0} 
+                    style={{ marginLeft: '8px', backgroundColor: '#52c41a' }}
+                  />
+                </span>
+              ),
+              children: renderContentList()
+            }
+          ]}
+        />
+      </Card>
+      
+      {/* 添加动态视觉效果 */}
+      <style jsx="true">{`
+        .podcast-detail-container {
+          position: relative;
+        }
+        
+        .gradient-text {
+          background: linear-gradient(45deg, #1890ff, #096dd9);
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          font-weight: bold;
+        }
+        
+        .task-info-card,
+        .content-card,
+        .loading-card,
+        .not-found-card,
+        .play-controls-card {
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+          transition: all 0.3s ease;
+        }
+        
+        .task-info-card:hover,
+        .content-card:hover,
+        .play-controls-card:hover {
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        }
+        
+        .script-item {
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+          transition: all 0.3s ease;
+        }
+        
+        .script-item:hover {
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+          transform: translateY(-2px);
+        }
+        
+        .script-item.playing {
+          animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(24, 144, 255, 0.4);
           }
-          key="content"
-        >
-          {renderContentList()}
-        </TabPane>
-        <TabPane
-          tab={
-            <span>
-              <SoundOutlined />
-              播客脚本
-              <Badge 
-                count={taskDetail.scriptItems ? taskDetail.scriptItems.length : 0} 
-                style={{ marginLeft: '8px', backgroundColor: '#1890ff' }}
-              />
-            </span>
+          70% {
+            box-shadow: 0 0 0 10px rgba(24, 144, 255, 0);
           }
-          key="script"
-        >
-          {renderScriptList()}
-        </TabPane>
-      </Tabs>
+          100% {
+            box-shadow: 0 0 0 0 rgba(24, 144, 255, 0);
+          }
+        }
+        
+        .content-collapse .ant-collapse-header {
+          background: rgba(0, 0, 0, 0.02);
+          border-radius: 8px 8px 0 0 !important;
+        }
+      `}</style>
     </div>
   );
 };

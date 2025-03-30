@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Card, Row, Col, Layout, Typography, message, Avatar, Space } from 'antd';
-import reactLogo from '../assets/react.svg';
-import viteLogo from '/vite.svg';
+import { Card, Row, Col, Layout, Typography, message, Avatar, Space, Input, Badge, Button } from 'antd';
+import { 
+  SearchOutlined, 
+  UserOutlined, 
+  LogoutOutlined, 
+  ArrowRightOutlined,
+  RobotOutlined
+} from '@ant-design/icons';
 import '../App.css';
 import { getCurrentUser, logout } from '../utils/http';
 import { appCards } from '../routes/config';
@@ -14,6 +19,7 @@ function AppHome() {
   const [user, setUser] = useState(null);
   const [searchValue, setSearchValue] = useState('');
   const [activeCategory, setActiveCategory] = useState('全部');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
 
   useEffect(() => {
     const userInfo = getCurrentUser();
@@ -61,14 +67,14 @@ function AppHome() {
   // 根据应用ID获取背景颜色
   const getGradientStyle = (id) => {
     const gradients = [
-      'linear-gradient(135deg, #6366f1, #818cf8)',
-      'linear-gradient(135deg, #10b981, #34d399)',
-      'linear-gradient(135deg, #f59e0b, #fbbf24)',
-      'linear-gradient(135deg, #ec4899, #f472b6)',
-      'linear-gradient(135deg, #3b82f6, #60a5fa)',
-      'linear-gradient(135deg, #8b5cf6, #a78bfa)',
-      'linear-gradient(135deg, #0891b2, #22d3ee)',
-      'linear-gradient(135deg, #f43f5e, #fb7185)'
+      'linear-gradient(135deg, #5B9BFF, #3E77E9)',
+      'linear-gradient(135deg, #5AFDF0, #4CCFB0)',
+      'linear-gradient(135deg, #FF6B6B, #E95D5D)',
+      'linear-gradient(135deg, #A084FF, #8A6FDC)',
+      'linear-gradient(135deg, #FF9F7D, #E97D5E)',
+      'linear-gradient(135deg, #5EE998, #40C87B)',
+      'linear-gradient(135deg, #FF7BA3, #E25E81)',
+      'linear-gradient(135deg, #70D2FF, #4CB0DF)'
     ];
     
     return gradients[id % gradients.length];
@@ -78,115 +84,174 @@ function AppHome() {
   const categories = getCategories();
 
   return (
-    <Layout style={{ minHeight: '100vh', background: '#f9fafb' }}>
-      <Header className="header" style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
-        <div className="logo-container">
-        <Title level={3} style={{ margin: 0, marginRight: '20px', background: 'linear-gradient(90deg, #6366f1, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>AI应用中心</Title>
-        </div>
+    <Layout style={{ minHeight: '100vh', background: '#F5F5F7' }}>
+      <Header className="header" 
+        style={{ 
+          background: 'rgba(255, 255, 255, 0.8)', 
+          backdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
+          padding: '0 24px',
+          position: 'sticky',
+          top: 0,
+          zIndex: 10,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          height: '64px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.02)'
+        }}
+      >
         <div style={{ display: 'flex', alignItems: 'center' }}>
-      
+          <Title level={3} style={{ 
+            margin: 0,
+            color: '#1D1D1F',
+            fontWeight: '600',
+            letterSpacing: '-0.5px',
+            fontSize: '20px'
+          }}>
+            AI 智能应用平台
+          </Title>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center' }}>
           {user && (
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <span style={{ marginRight: '15px', color: 'var(--text-color)' }}>
-                欢迎，{user.name}
+              <Avatar 
+                style={{ 
+                  background: '#f0f0f0',
+                  marginRight: '12px',
+                  border: '2px solid rgba(0, 0, 0, 0.05)'
+                }} 
+                icon={<UserOutlined style={{ color: '#666' }} />} 
+              />
+              <span style={{ 
+                marginRight: '15px', 
+                color: '#1D1D1F',
+                fontWeight: 500,
+                fontSize: '14px'
+              }}>
+                {user.name}
               </span>
-              <a
+              <Button
+                type="text"
+                style={{ 
+                  color: '#666',
+                  fontSize: '14px'
+                }}
+                icon={<LogoutOutlined />}
                 onClick={handleLogout}
-                style={{ color: 'var(--light-text)' }}
               >
-                退出登录
-              </a>
+                退出
+              </Button>
             </div>
           )}
         </div>
       </Header>
 
-      <Content style={{ padding: '24px 50px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '40px', paddingTop: '20px' }}>
- 
-          <Text style={{ color: 'var(--light-text)', fontSize: '1.1rem', display: 'block', maxWidth: '600px', margin: '0 auto' }}>
+      <Content style={{ padding: '40px 64px' }}>
+        <div style={{ 
+          textAlign: 'center', 
+          marginBottom: '60px', 
+          paddingTop: '60px',
+          position: 'relative'
+        }}>
+          <Title style={{ 
+            marginBottom: '16px', 
+            fontSize: '46px', 
+            fontWeight: '700',
+            color: '#1D1D1F',
+            letterSpacing: '-0.5px',
+            position: 'relative',
+            zIndex: 1,
+            lineHeight: 1.2
+          }} className="hero-title">
+            探索 AI 创新应用
+          </Title>
           
+          <Text style={{ 
+            color: '#86868B', 
+            fontSize: '1.125rem', 
+            display: 'block', 
+            maxWidth: '600px', 
+            margin: '0 auto 20px',
+            position: 'relative',
+            zIndex: 1,
+            lineHeight: 1.5
+          }}>
+            高效能、简洁优雅的AI工具集，助您提升工作效率
           </Text>
         </div>
         
         {/* 搜索框 */}
-        <div style={{ maxWidth: '600px', margin: '0 auto 35px', position: 'relative' }}>
-          <input 
-            type="text" 
-            placeholder="搜索AI工具..."
+        <div style={{ 
+          maxWidth: '700px', 
+          margin: '0 auto 48px', 
+          position: 'relative' 
+        }}>
+          <Input
+            placeholder="搜索应用..."
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
+            onFocus={() => setIsSearchFocused(true)}
+            onBlur={() => setIsSearchFocused(false)}
             style={{ 
-              width: '100%',
-              padding: '16px 24px',
-              border: '1px solid rgba(0, 0, 0, 0.05)',
+              padding: '15px 20px',
+              height: '56px',
               borderRadius: '16px',
               backgroundColor: 'white',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
-              fontSize: '1.05rem',
-              outline: 'none',
-              transition: 'all 0.3s ease'
+              border: isSearchFocused ? '1px solid rgba(0, 0, 0, 0.2)' : '1px solid rgba(0, 0, 0, 0.1)',
+              boxShadow: isSearchFocused ? '0 4px 20px rgba(0, 0, 0, 0.05)' : '0 2px 10px rgba(0, 0, 0, 0.03)',
+              fontSize: '16px',
+              transition: 'all 0.3s ease',
+              color: '#1D1D1F'
             }}
-            onFocus={(e) => {
-              e.target.style.boxShadow = '0 4px 20px rgba(99, 102, 241, 0.15)';
-              e.target.style.borderColor = 'rgba(99, 102, 241, 0.3)';
-            }}
-            onBlur={(e) => {
-              e.target.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.08)';
-              e.target.style.borderColor = 'rgba(0, 0, 0, 0.05)';
-            }}
+            suffix={
+              <SearchOutlined 
+                style={{ 
+                  color: isSearchFocused ? '#1D1D1F' : '#86868B',
+                  fontSize: '18px'
+                }} 
+              />
+            }
           />
-          <span style={{ 
-            position: 'absolute', 
-            right: '20px', 
-            top: '50%', 
-            transform: 'translateY(-50%)', 
-            color: '#6366f1',
-            background: '#f5f7fa',
-            width: '36px',
-            height: '36px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '10px'
-          }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M21 21L15 15M17 10C17 13.866 13.866 17 10 17C6.13401 17 3 13.866 3 10C3 6.13401 6.13401 3 10 3C13.866 3 17 6.13401 17 10Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </span>
         </div>
         
         {/* 分类选择 */}
-        <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '35px', justifyContent: 'center' }}>
+        <div style={{ 
+          display: 'flex', 
+          gap: '10px', 
+          flexWrap: 'wrap', 
+          marginBottom: '48px', 
+          justifyContent: 'center' 
+        }}>
           {categories.map(category => (
             <div 
               key={category}
               onClick={() => setActiveCategory(category)}
               style={{ 
                 padding: '10px 20px',
-                backgroundColor: activeCategory === category ? '#6366f1' : 'white',
-                color: activeCategory === category ? 'white' : '#4b5563',
-                borderRadius: '12px',
-                fontSize: '0.95rem',
+                backgroundColor: activeCategory === category ? '#5B9BFF' : 'white',
+                color: activeCategory === category ? 'white' : '#1D1D1F',
+                borderRadius: '14px',
+                fontSize: '14px',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
-                boxShadow: activeCategory === category 
-                  ? '0 8px 16px rgba(99, 102, 241, 0.25)' 
-                  : '0 2px 10px rgba(0, 0, 0, 0.08)',
                 fontWeight: activeCategory === category ? '600' : '500',
-                border: '1px solid',
-                borderColor: activeCategory === category ? '#6366f1' : 'rgba(0, 0, 0, 0.05)'
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)'
               }}
+              className="category-pill"
               onMouseEnter={(e) => {
                 if (activeCategory !== category) {
-                  e.currentTarget.style.backgroundColor = '#f9fafb';
+                  e.currentTarget.style.backgroundColor = '#F8F8F8';
                   e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
                 }
               }}
               onMouseLeave={(e) => {
                 if (activeCategory !== category) {
                   e.currentTarget.style.backgroundColor = 'white';
                   e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.06)';
                 }
               }}
             >
@@ -196,136 +261,139 @@ function AppHome() {
         </div>
         
         {/* 卡片网格 */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', 
+          gap: '24px', 
+          maxWidth: '1400px', 
+          margin: '0 auto' 
+        }}>
           {filteredApps.map((app) => (
             <Link to={app.path} key={app.id} style={{ textDecoration: 'none' }}>
-              <div className="card" style={{ 
+              <div className="app-card" style={{ 
                 backgroundColor: 'white',
-                borderRadius: '12px',
+                borderRadius: '20px',
                 overflow: 'hidden',
-                boxShadow: '0 3px 12px rgba(0, 0, 0, 0.06)',
-                transition: 'all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.06)',
+                transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
                 cursor: 'pointer',
                 position: 'relative',
                 height: '100%',
                 border: '1px solid rgba(0, 0, 0, 0.04)',
                 transform: 'translateY(0)',
                 backfaceVisibility: 'hidden'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-5px)';
-                e.currentTarget.style.boxShadow = '0 12px 20px rgba(0, 0, 0, 0.08)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = '0 3px 12px rgba(0, 0, 0, 0.06)';
               }}>
                 <div style={{ 
-                  height: '120px',
+                  height: '140px',
                   background: getGradientStyle(app.id),
                   position: 'relative',
                   overflow: 'hidden'
                 }}>
                   {/* 装饰性背景图案 */}
-                  <div style={{
+                  <div className="card-graphic-element" style={{
                     position: 'absolute',
-                    width: '140px',
-                    height: '140px',
-                    borderRadius: '50%',
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    top: '-70px',
-                    right: '-35px'
+                    width: '200px',
+                    height: '200px',
+                    borderRadius: '40%',
+                    background: 'rgba(255, 255, 255, 0.15)',
+                    top: '-100px',
+                    right: '-30px',
+                    transform: 'rotate(10deg)'
                   }}></div>
-                  <div style={{
+                  <div className="card-graphic-element" style={{
                     position: 'absolute',
-                    width: '80px',
-                    height: '80px',
-                    borderRadius: '50%',
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    bottom: '-15px',
-                    left: '20px'
+                    width: '100px',
+                    height: '100px',
+                    borderRadius: '30%',
+                    background: 'rgba(255, 255, 255, 0.15)',
+                    bottom: '-20px',
+                    left: '30px',
+                    transform: 'rotate(-15deg)'
                   }}></div>
                   
                   <div style={{ 
-                    width: '56px',
-                    height: '56px',
+                    width: '64px',
+                    height: '64px',
                     backgroundColor: 'white',
-                    borderRadius: '10px',
+                    borderRadius: '16px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 8px 16px rgba(0, 0, 0, 0.1)',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
                     position: 'absolute',
-                    bottom: '-20px',
-                    left: '16px',
+                    bottom: '-32px',
+                    left: '24px',
                     zIndex: 1
                   }}>
-                    {app.icon ? app.icon : (
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 4.5V18M12 4.5L7.5 9M12 4.5L16.5 9M7.5 15H16.5" stroke="#6366f1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
+                    {app.icon}
                   </div>
                 </div>
                 
                 {app.badge && (
-                  <span style={{ 
+                  <div style={{
                     position: 'absolute',
-                    top: '12px',
-                    right: '12px',
-                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                    color: '#6366f1',
-                    fontSize: '0.7rem',
-                    padding: '4px 10px',
-                    borderRadius: '100px',
+                    top: '16px',
+                    right: '16px',
+                    background: 'rgba(255, 255, 255, 0.9)',
+                    backdropFilter: 'blur(4px)',
+                    color: '#5B9BFF',
+                    fontSize: '12px',
+                    padding: '4px 12px',
+                    borderRadius: '12px',
                     fontWeight: 600,
-                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
-                    letterSpacing: '0.5px'
+                    letterSpacing: '0.5px',
+                    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)'
                   }}>
                     {app.badge}
-                  </span>
+                  </div>
                 )}
                 
-                <div style={{ padding: '28px 16px 16px' }}>
+                <div style={{ padding: '40px 24px 24px' }}>
                   <h3 style={{ 
-                    fontSize: '1rem',
-                    fontWeight: 700,
-                    marginBottom: '8px',
-                    color: '#1e293b'
+                    fontSize: '20px',
+                    fontWeight: 600,
+                    marginBottom: '10px',
+                    color: '#1D1D1F',
+                    letterSpacing: '-0.3px'
                   }}>
                     {app.title}
                   </h3>
                   <p style={{ 
-                    color: '#64748b',
-                    fontSize: '0.85rem',
-                    lineHeight: 1.5,
+                    color: '#86868B',
+                    fontSize: '15px',
+                    lineHeight: 1.6,
                     display: '-webkit-box',
-                    WebkitLineClamp: 2,
+                    WebkitLineClamp: 3,
                     WebkitBoxOrient: 'vertical',
                     overflow: 'hidden',
-                    margin: 0,
-                    height: '40px'
+                    margin: '0 0 24px 0',
+                    height: '72px'
                   }}>
                     {app.description}
                   </p>
                   
                   <div style={{
-                    marginTop: '12px',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'flex-end'
+                    justifyContent: 'space-between'
                   }}>
                     <div style={{
-                      fontSize: '0.8rem',
-                      fontWeight: 600,
-                      color: '#6366f1',
+                      fontSize: '13px',
+                      color: '#86868B',
+                      letterSpacing: '0.3px'
+                    }}>
+                      {app.category}
+                    </div>
+                    
+                    <div style={{
+                      fontSize: '14px',
+                      fontWeight: 500,
+                      color: '#5B9BFF',
                       display: 'flex',
                       alignItems: 'center'
                     }}>
-                      进入应用
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{marginLeft: '3px'}}>
-                        <path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
+                      <span className="app-link">前往应用</span>
+                      <ArrowRightOutlined style={{ marginLeft: '6px', fontSize: '12px' }} />
                     </div>
                   </div>
                 </div>
@@ -333,10 +401,28 @@ function AppHome() {
             </Link>
           ))}
         </div>
+
+        {filteredApps.length === 0 && (
+          <div style={{ 
+            textAlign: 'center', 
+            padding: '60px 0', 
+            color: '#86868B' 
+          }}>
+            <div style={{ fontSize: '24px', marginBottom: '16px' }}>无匹配结果</div>
+            <p>未找到匹配的应用，请尝试其他搜索词或分类</p>
+          </div>
+        )}
       </Content>
 
-      <Footer style={{ textAlign: 'center', background: 'transparent' }}>
-        AI应用中心 ©{new Date().getFullYear()} Created with Ant Design
+      <Footer style={{ 
+        textAlign: 'center', 
+        background: 'transparent', 
+        color: '#86868B',
+        borderTop: '1px solid rgba(0, 0, 0, 0.05)',
+        padding: '24px',
+        fontSize: '13px'
+      }}>
+        AI应用中心 © {new Date().getFullYear()}
       </Footer>
     </Layout>
   );
