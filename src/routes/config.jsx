@@ -46,6 +46,24 @@ import CreateProductPage from '../apps/CustomerService/CreateProductPage';
 import EditProductPage from '../apps/CustomerService/EditProductPage';
 import ProductDetailPage from '../apps/CustomerService/ProductDetailPage';
 
+//数据库设计
+
+import DatabaseDesignLayout from '../apps/DatabaseDesign/DatabaseDesignLayout';
+import DatabaseDesignHome from '../apps/DatabaseDesign/DatabaseDesignHome';
+import CodeTemplateManager from '../apps/DatabaseDesign/CodeTemplateManager';
+import DatabaseDesignTaskDetail from '../apps/DatabaseDesign/DatabaseDesignTaskDetail';
+
+//问卷
+
+import SurveyLayout from '../apps/Survey/SurveyLayout';
+
+import SurveyListPage from '../apps/Survey/SurveyListPage';
+import SurveyCreatePage from '../apps/Survey/SurveyCreatePage';
+import SurveyPreviewPage from '../apps/Survey/SurveyPreviewPage';
+import SurveyStatsPage from '../apps/Survey/SurveyStatsPage';
+
+
+
 
 /**
  * 应用卡片配置
@@ -106,6 +124,28 @@ export const appCards = [
       <path d="M7 19C7 20.1 7.9 21 9 21H15C16.1 21 17 20.1 17 19V3H7V19ZM9 5H15V19H9V5Z" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
       <path d="M12 3C12.5523 3 13 2.55228 13 2C13 1.44772 12.5523 1 12 1C11.4477 1 11 1.44772 11 2C11 2.55228 11.4477 3 12 3Z" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
       <path d="M15 9H9M15 12H9M15 15H9" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  },
+  {
+    id: 6,
+    title: "数据库设计工具",
+    path: "/database-design",
+    description: "使用自然语言交互，AI就能设计好业务的数据结构和关系，并能选择语言生成后端的数据执行代码",
+    category: "代码辅助",
+    badge: "新",
+    icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M4 7v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2H6c-1.1 0-2 .9-2 2zm12 2c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2zm-8 6c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm2-6c0 1.1-.9 2-2 2s-2-.9-2-2 .9-2 2-2 2 .9 2 2z" stroke="#0ea5e9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  },
+  {
+    id: 7, // 确保ID唯一
+    title: "AI问卷调查",
+    path: "/survey",
+    description: "使用AI智能设计问卷，支持多种题型，自动分析收集数据，高效便捷的问卷调研工具",
+    category: "数据收集",
+    badge: "新",
+    icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M9 5H7C5.89543 5 5 5.89543 5 7V19C5 20.1046 5.89543 21 7 21H17C18.1046 21 19 20.1046 19 19V7C19 5.89543 18.1046 5 17 5H15M9 5C9 6.10457 9.89543 7 11 7H13C14.1046 7 15 6.10457 15 5M9 5C9 3.89543 9.89543 3 11 3H13C14.1046 3 15 3.89543 15 5M12 12H15M12 16H15M9 12H9.01M9 16H9.01" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" />
     </svg>
   }
 ];
@@ -269,6 +309,62 @@ const routes = [
       {
         path: 'products/:productId',
         element: <ProductDetailPage />
+      }
+    ]
+  },
+  {
+    path: '/database-design',
+    element: (
+      <ProtectedRoute>
+        <DatabaseDesignLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true, // 默认子路由
+        element: <DatabaseDesignHome />
+      },
+      {
+        path: 'task/:taskId', // 任务详情页
+        element: <DatabaseDesignTaskDetail />
+      },
+      {
+        path: 'templates', // 代码模板管理页
+        element: <CodeTemplateManager />
+      }
+    ]
+  },
+  {
+    path: '/survey',
+    element: (
+      <ProtectedRoute>
+        <SurveyLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true, // 默认子路由
+        element: <SurveyListPage />
+      },
+      {
+        path: 'create', // 创建问卷
+        element: <SurveyCreatePage />
+      },
+      {
+        path: 'edit/:taskId', // 编辑问卷
+        element: <SurveyCreatePage />
+      },
+      {
+        path: 'preview/:taskId', // 预览问卷
+        element: <SurveyPreviewPage />
+      },
+      {
+        path: 'stats/:taskId', // 查看统计
+        element: <SurveyStatsPage />
+      },
+      {
+        path: 'fill/:shareCode', // 填写问卷(通过分享链接)
+        element: <SurveyPreviewPage />
       }
     ]
   },
