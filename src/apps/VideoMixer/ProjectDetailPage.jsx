@@ -13,7 +13,9 @@ import {
   List,
   Tag,
   Collapse,
-  message
+  message,
+  Row,
+  Col
 } from 'antd';
 import {
   VideoCameraOutlined,
@@ -176,13 +178,13 @@ const ProjectDetailPage = () => {
     return progressMap[status] || 0;
   };
   
-  // 渲染项目信息卡片
+  // 渲染合并的项目信息与详情卡片
   const renderProjectInfoCard = () => {
     if (!project) return null;
     
     return (
       <Card style={{ marginBottom: '16px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
           <div>
             <Title level={4}>{project.name}</Title>
             <Space size={[0, 8]} wrap style={{ marginBottom: '8px' }}>
@@ -208,50 +210,53 @@ const ProjectDetailPage = () => {
             </Button>
           </Space>
         </div>
-      </Card>
-    );
-  };
-  
-  // 渲染项目详情
-  const renderProjectDetails = () => {
-    if (!project) return null;
-    
-    return (
-      <Card style={{ marginBottom: '16px' }} title="项目详情">
-        <List split={false} size="small">
-          <List.Item>
-            <Text strong style={{ marginRight: '8px' }}>目标时长:</Text>
-            <Text>{project.targetDuration}秒</Text>
-          </List.Item>
+        
+        <Divider style={{ margin: '0 0 16px 0' }} />
+        
+        <Row gutter={[24, 0]}>
+          <Col xs={24} sm={12} md={8}>
+            <List.Item>
+              <Text strong style={{ marginRight: '8px' }}>目标时长:</Text>
+              <Text>{project.targetDuration}秒</Text>
+            </List.Item>
+          </Col>
           
           {project.sceneKeywords && (
-            <List.Item>
-              <Text strong style={{ marginRight: '8px' }}>场景关键词:</Text>
-              <Text>{project.sceneKeywords}</Text>
-            </List.Item>
+            <Col xs={24} sm={12} md={8}>
+              <List.Item>
+                <Text strong style={{ marginRight: '8px' }}>场景关键词:</Text>
+                <Text>{project.sceneKeywords}</Text>
+              </List.Item>
+            </Col>
           )}
           
-          <List.Item>
-            <Text strong style={{ marginRight: '8px' }}>相关性阈值:</Text>
-            <Text>{project.minRelevanceThreshold}</Text>
-          </List.Item>
+          <Col xs={24} sm={12} md={8}>
+            <List.Item>
+              <Text strong style={{ marginRight: '8px' }}>相关性阈值:</Text>
+              <Text>{project.minRelevanceThreshold}</Text>
+            </List.Item>
+          </Col>
           
           {project.narrationStyle && (
-            <List.Item>
-              <Text strong style={{ marginRight: '8px' }}>解说词风格:</Text>
-              <Text>{project.narrationStyle}</Text>
-            </List.Item>
+            <Col xs={24} sm={12} md={8}>
+              <List.Item>
+                <Text strong style={{ marginRight: '8px' }}>解说词风格:</Text>
+                <Text>{project.narrationStyle}</Text>
+              </List.Item>
+            </Col>
           )}
           
-          <List.Item>
-            <Text strong style={{ marginRight: '8px' }}>背景音乐类型:</Text>
-            <Text>
-              {project.backgroundMusicType === 1 ? 'AI生成' : 
-               project.backgroundMusicType === 2 ? '系统随机内置' : 
-               project.backgroundMusicType === 3 ? '上传音乐文件' : '未知'}
-            </Text>
-          </List.Item>
-        </List>
+          <Col xs={24} sm={12} md={8}>
+            <List.Item>
+              <Text strong style={{ marginRight: '8px' }}>背景音乐类型:</Text>
+              <Text>
+                {project.backgroundMusicType === 1 ? 'AI生成' : 
+                 project.backgroundMusicType === 2 ? '系统随机内置' : 
+                 project.backgroundMusicType === 3 ? '上传音乐文件' : '未知'}
+              </Text>
+            </List.Item>
+          </Col>
+        </Row>
       </Card>
     );
   };
@@ -262,116 +267,143 @@ const ProjectDetailPage = () => {
     
     const percent = getProgressPercent(project.status);
     const stepText = getProjectSteps()[project.status]?.title || '处理中';
+    const currentStep = project.status;
     
     return (
-      <Card style={{ marginBottom: '16px' }} title="处理进度">
-        <div style={{ marginBottom: '24px' }}>
-          <Steps 
-            current={project.status} 
-            size="small"
-            progressDot
-            items={getProjectSteps().map((step, index) => ({
-              title: step.title,
-              description: step.description,
-              status: 
-                index < project.status ? 'finish' : 
-                index === project.status ? 'process' : 
-                'wait'
-            }))}
-          />
-        </div>
-        
-        <div style={{ padding: '0 20px' }}>
-          <Progress 
-            percent={percent} 
-            status={project.status === 6 ? 'success' : 'active'} 
-            format={() => `${stepText} ${percent}%`}
-          />
-        </div>
-        
-        {progressPolling && (
-          <div style={{ textAlign: 'center', marginTop: '16px' }}>
-            <Text type="secondary">
-              <Spin size="small" style={{ marginRight: '8px' }} />
-              正在自动更新处理进度...
-            </Text>
+      <Card 
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>处理进度</span>
+            <div>
+              <Progress 
+                type="circle" 
+                percent={percent} 
+                width={40} 
+                status={project.status === 6 ? 'success' : 'active'} 
+                format={() => `${percent}%`}
+              />
+            </div>
           </div>
+        } 
+        style={{ height: '100%' }}
+      >
+        {progressPolling && (
+          <Alert
+            message={
+              <span>
+                <Spin size="small" style={{ marginRight: '8px' }} />
+                正在自动更新处理进度...
+              </span>
+            }
+            type="info"
+            showIcon={false}
+            style={{ marginBottom: '16px' }}
+          />
         )}
-        
-        {project.errorMessage && (
+          {project.errorMessage && (
           <Alert
             message="处理失败"
             description={project.errorMessage}
             type="error"
             showIcon
-            style={{ marginTop: '16px' }}
+            style={{ marginBottom: '16px' }}
           />
         )}
+        
+        <Steps 
+          direction="vertical"
+          current={currentStep} 
+          size="small"
+          items={getProjectSteps().map((step, index) => ({
+            title: (
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>{step.title}</span>
+                
+              </div>
+            ),
+            description: (
+              <div style={{ fontSize: '12px', color: '#888' }}>
+                {step.description}
+              </div>
+            ),
+            status: 
+              index < currentStep ? 'finish' : 
+              index === currentStep ? 'process' : 
+              'wait'
+          }))}
+        />
+        
+      
       </Card>
     );
   };
   
   // 渲染最终视频
   const renderFinalVideo = () => {
-    if (!project || !project.finalVideoUrl) return null;
+    if (!project) return null;
     
     return (
-      <Card title="最终生成视频">
+      <Card 
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span>最终生成视频</span>
+            {project.status === 6 && project.finalVideoUrl && (
+              <Space>
+                <Button 
+                  type="primary"
+                  size="small"
+                  icon={<PlaySquareOutlined />}
+                  onClick={() => window.open(project.finalVideoUrl, '_blank')}
+                >
+                  新窗口播放
+                </Button>
+                <Button
+                  size="small"
+                  icon={<DownloadOutlined />}
+                  onClick={() => {
+                    const a = document.createElement('a');
+                    a.href = project.finalVideoUrl;
+                    a.download = `${project.name}.mp4`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                  }}
+                >
+                  下载视频
+                </Button>
+              </Space>
+            )}
+          </div>
+        } 
+        style={{ height: '100%' }}
+      >
         <div style={{ textAlign: 'center' }}>
-          {project.status === 6 ? (
+          {project.status === 6 && project.finalVideoUrl ? (
             <>
-              <div style={{ marginBottom: '16px' }}>
-                <Alert
-                  message={
-                    <Space>
-                      <CheckCircleOutlined />
-                      <span>视频已成功生成</span>
-                    </Space>
-                  }
-                  type="success"
-                  showIcon
-                />
-              </div>
-              
               <video 
                 controls 
-                style={{ maxWidth: '100%', maxHeight: '500px', marginBottom: '16px' }}
+                style={{ width: '100%', borderRadius: '4px', maxHeight: '600px' }}
                 src={project.finalVideoUrl}
                 poster={`https://picsum.photos/800/450?random=${projectId}`} // 使用随机占位图作为封面
               />
-              
-              <div>
-                <Space>
-                  <Button 
-                    type="primary"
-                    icon={<PlaySquareOutlined />}
-                    onClick={() => window.open(project.finalVideoUrl, '_blank')}
-                  >
-                    在新窗口播放
-                  </Button>
-                  <Button
-                    icon={<DownloadOutlined />}
-                    onClick={() => {
-                      const a = document.createElement('a');
-                      a.href = project.finalVideoUrl;
-                      a.download = `${project.name}.mp4`;
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                    }}
-                  >
-                    下载视频
-                  </Button>
-                </Space>
-              </div>
             </>
           ) : (
-            <div style={{ padding: '40px 0' }}>
-              <ClockCircleOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
-              <div>
-                <Text>视频处理中，请稍后刷新页面查看结果</Text>
-              </div>
-            </div>
+            <Empty
+              image={<ClockCircleOutlined style={{ fontSize: '64px', color: '#1890ff' }} />}
+              imageStyle={{ height: 120 }}
+              description={
+                <div>
+                  <Text>视频处理中，请稍后刷新页面查看结果</Text>
+                  <div style={{ marginTop: '16px' }}>
+                    <Progress 
+                      percent={getProgressPercent(project.status)} 
+                      status="active" 
+                      style={{ maxWidth: '300px', margin: '0 auto' }}
+                    />
+                  </div>
+                </div>
+              }
+            />
           )}
         </div>
       </Card>
@@ -406,9 +438,18 @@ const ProjectDetailPage = () => {
   return (
     <div>
       {renderProjectInfoCard()}
-      {renderProjectDetails()}
-      {renderProcessingProgress()}
-      {renderFinalVideo()}
+      
+      <Row gutter={[16, 16]}>
+        {/* 左侧布局 */}
+        <Col xs={24} sm={24} md={10} lg={8} xl={7}>
+          {renderProcessingProgress()}
+        </Col>
+        
+        {/* 右侧布局 */}
+        <Col xs={24} sm={24} md={14} lg={16} xl={17}>
+          {renderFinalVideo()}
+        </Col>
+      </Row>
     </div>
   );
 };
