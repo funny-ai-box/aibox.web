@@ -60,7 +60,7 @@ const KnowledgeBaseHome = () => {
       setLoading(true);
       const response = await pkbAPI.getDocumentsList();
       if (response.code === 200) {
-        setDocuments(response.data || []);
+        setDocuments(response.data.items || []);
       }
     } catch (error) {
       message.error('获取文档列表失败');

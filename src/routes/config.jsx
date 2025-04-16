@@ -70,6 +70,17 @@ import PodcastHome from '../apps/Podcast/PodcastHome';
 import CreatePodcastPage from '../apps/Podcast/CreatePodcastPage';
 import PodcastDetailPage from '../apps/Podcast/PodcastDetailPage';
 
+// 面试
+
+import InterviewLayout from '../apps/Interview/InterviewLayout';
+import InterviewHome from '../apps/Interview/InterviewHome';
+
+import InterviewCreatePage from '../apps/Interview/InterviewCreatePage';
+import InterviewScenarioDetail from '../apps/Interview/InterviewScenarioDetail';
+import InterviewCreateSession from '../apps/Interview/InterviewCreateSession';
+import InterviewSession from '../apps/Interview/InterviewSession';
+import InterviewSessionResult from '../apps/Interview/InterviewSessionResult';
+
 
 
 /**
@@ -164,6 +175,17 @@ export const appCards = [
     badge: "新",
     icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M12 15.5v-7m3 1.5v4m-6-4v4m-4 2h14a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2z" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  },
+  {
+    id: 9,
+    title: "AI面试助手",
+    path: "/interview",
+    description: "智能面试系统，上传面试知识素材，自动生成面试题目，AI面试官进行语音面试并提供全面评估报告",
+    category: "人力资源",
+    badge: "新",
+    icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" stroke="#4f46e5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   }
   
@@ -408,7 +430,41 @@ const routes = [
         element: <PodcastDetailPage />
       }
     ]
-  },  
+  }, 
+  {
+    path: '/interview',
+    element: (
+      <ProtectedRoute>
+        <InterviewLayout />
+      </ProtectedRoute>
+    ),
+    children: [
+      {
+        index: true, // 默认子路由
+        element: <InterviewHome />
+      },
+      {
+        path: 'create', // 创建面试场景
+        element: <InterviewCreatePage />
+      },
+      {
+        path: 'scenario/:scenarioId', // 面试场景详情
+        element: <InterviewScenarioDetail />
+      },
+      {
+        path: 'create-session/:scenarioId/:jobPositionId', // 创建面试会话
+        element: <InterviewCreateSession />
+      },
+      {
+        path: 'session/:sessionId', // 面试会话
+        element: <InterviewSession />
+      },
+      {
+        path: 'session-result/:sessionId', // 面试结果
+        element: <InterviewSessionResult />
+      }
+    ]
+  }, 
   
   // 捕获所有不匹配的路由
   {

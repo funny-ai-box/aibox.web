@@ -52,7 +52,9 @@ const pkbAPI = {
    * @returns {Promise} - 请求Promise
    */
   getDocumentsList: () => {
-    return http.post('/pkb/documents/list', {});
+    return http.post('/knowledge/documents/list', {
+      AppType: 1
+    });
   },
   
   /**
