@@ -7,29 +7,24 @@ import {
   Divider,
   List,
   Avatar,
-  Badge,
   Tag,
   Progress,
   Modal,
   Spin,
   message,
   Result,
-  Popconfirm,
-  App
+  Popconfirm
 } from 'antd';
 import {
   AudioOutlined,
   AudioMutedOutlined,
   CloseCircleOutlined,
   CheckCircleOutlined,
-  ExclamationCircleOutlined,
   LoadingOutlined,
   UserOutlined,
   RobotOutlined,
   SoundOutlined,
   InfoCircleOutlined,
-  FileTextOutlined,
-  TeamOutlined,
   QuestionCircleOutlined
 } from '@ant-design/icons';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
@@ -61,8 +56,7 @@ const InterviewSession = () => {
   const [messageHistory, setMessageHistory] = useState([]); // 存储所有消息按时间顺序
   const [isProcessingResponse, setIsProcessingResponse] = useState(false);
   const [interviewerResponse, setInterviewerResponse] = useState(''); // 面试官增量回复
-  // 使用状态存储应聘者语音文本
-  const [candidateAudioText, setCandidateAudioText] = useState('');
+  const [candidateAudioText, setCandidateAudioText] = useState(''); // 应聘者语音文本
 
   const [endingSession, setEndingSession] = useState(false);
   const [sessionEnded, setSessionEnded] = useState(false);
@@ -71,9 +65,7 @@ const InterviewSession = () => {
   
   // 用于累积消息部分
   const [currentTranscript, setCurrentTranscript] = useState('');
-  const [liveTranscript, setLiveTranscript] = useState('');  // 实时增量转录
   const pendingFunctionCallArgsRef = useRef({});
-  const audioTranscriptRef = useRef(''); // 用于累积音频转录增量
 
   // WebRTC相关引用
   const peerConnectionRef = useRef(null);
@@ -115,9 +107,6 @@ const InterviewSession = () => {
         
         // 存储媒体流以供后续使用
         mediaStreamRef.current = mediaStream;
-        
-
-        
       } catch (error) {
         console.error('获取麦克风访问失败:', error);
         message.error('无法访问麦克风，请确保已授予麦克风权限');
@@ -221,8 +210,6 @@ const InterviewSession = () => {
       dataChannel.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-       
-          
           processRealtimeMessage(message);
         } catch (error) {
           console.error('处理消息失败:', error);
@@ -236,7 +223,6 @@ const InterviewSession = () => {
         await peerConnection.setLocalDescription(offer);
         
         // 7. 发送offer到服务器并获取answer
-        // 根据您的服务
         const baseUrl = 'https://api.openai.com/v1/realtime';  // 请替换为您的实际API端点
         const model = 'gpt-4o-realtime-preview';  // 请替换为您使用的模型
         
@@ -291,329 +277,202 @@ const InterviewSession = () => {
     }
   };
   
-  // 设置语音识别功能，用于处理应聘者的本地语音输入
-
-  // 处理实时消息 - 更新后的函数，统一处理用户和面试官消息
-  const processRealtimeMessage = (message) => {
-    try {
-      if (!message || !message.type) return;
-      
-      // console.log('从数据通道收到消息:', message.type, message);
-      
-      // 专门提取用户转录内容
-      if (message.type === 'conversation.item.created' && message.item && message.item.role === 'user') {
-        console.log('检测到用户消息:', message.item.id);
+  // 处理实时消息 - 更新后的函数，简化处理用户和面试官消息
+  // 处理实时消息 - 更新面试官和用户消息处理
+// 处理实时消息 - 更新面试官和用户消息处理
+// 处理实时消息 - 更新面试官和用户消息处理
+const processRealtimeMessage = (message) => {
+  try {
+    if (!message || !message.type) return;
+    
+    // 调试信息 - 始终显示所有收到的消息类型及详情，有助于调试
+    console.log('从数据通道收到消息:', message.type, JSON.stringify(message, null, 2));
+    
+    switch (message.type) {
+      // 用户语音转录完成
+      case 'conversation.item.input_audio_transcription.completed':
+        console.log('用户语音转录完成');
+        console.log(`用户语音转录: ${message.transcript}`);
         
-        // 提取并显示转录内容
-        if (message.item.content && Array.isArray(message.item.content)) {
-          message.item.content.forEach(content => {
-            if (content.type === 'input_audio' && content.transcript) {
-              // 使用显眼的格式打印转录内容
-  
-              
-              // 将转录添加到消息历史中，使用统一的类型
-              setMessageHistory(prevHistory => [
-                ...prevHistory,
-                {
-                  id: `transcript-${Date.now()}`,
-                  type: 'user', // 统一为user类型
-                  content: content.transcript,
-                  timestamp: new Date().toISOString(),
-                  isSystemTranscript: true, // 标记为系统转录
-                }
-              ]);
+        if (message.transcript) {
+          // 保存用户的语音转录文本
+          setCandidateAudioText(message.transcript);
+          
+          // 添加到消息历史
+          setMessageHistory(prevHistory => [
+            ...prevHistory,
+            {
+              id: `transcript-${Date.now()}`,
+              type: 'user',
+              content: message.transcript,
+              timestamp: new Date().toISOString()
             }
-          });
+          ]);
+          
+          // 更新当前转录
+          setCurrentTranscript(message.transcript);
         }
-      }
+        break;
       
-      switch (message.type) {
-        // 会话生命周期事件
-        case 'session.created':
-          console.log('会话创建成功');
-          break;
-        case 'conversation.item.input_audio_transcription.completed':
-          console.log('用户语音转录完成');
-          console.log('\n████████████ 用户语音转录 ████████████');
-          console.log(`💬 ${message.transcript}`);
-          console.log('████████████████████████████████████\n');
-          break;
-
-
-          
-        case 'session.updated':
-          console.log('会话配置已更新');
-          break;
-  
-        // 文本输入转录事件
-        case 'conversation.item.created':
-          if (message.item && message.item.role === 'user') {
-            // 处理用户输入的文本消息
-            if (message.item.content && Array.isArray(message.item.content)) {
-              message.item.content.forEach(content => {
-                if (content.type === 'input_text' && content.text) {
-                  // 将用户输入的文本添加到消息历史
-                  setMessageHistory(prevHistory => [
-                    ...prevHistory,
-                    {
-                      id: message.item.id || Date.now(),
-                      type: 'user', // 统一为user类型
-                      content: content.text,
-                      timestamp: new Date().toISOString()
-                    }
-                  ]);
-                  setCurrentTranscript(content.text);
-                }
-                // 处理用户音频输入
-                else if (content.type === 'input_audio' && content.transcript) {
-                  // 将用户音频转录添加到消息历史
-                  setMessageHistory(prevHistory => [
-                    ...prevHistory,
-                    {
-                      id: message.item.id || Date.now(),
-                      type: 'user', // 统一为user类型
-                      content: content.transcript,
-                      timestamp: new Date().toISOString()
-                    }
-                  ]);
-                  setCurrentTranscript(content.transcript);
-                }
-              });
-            }
-          }
-          break;
-          
-        // 音频转录增量
-        case 'response.audio_transcript.delta':
-          if (message.delta) {
-            // 累积转录文本
-            audioTranscriptRef.current += message.delta;
-            // 更新UI状态
-            setLiveTranscript(audioTranscriptRef.current);
-          }
-          break;
-          
-        case 'response.audio_transcript.done':
-          // 完成一轮音频转录
-          const finalTranscript = audioTranscriptRef.current;
-          setCurrentTranscript(finalTranscript);
-          
-          // 将完成的转录添加到消息历史（仅当非空时）
-          if (finalTranscript.trim() !== '') {
-            setMessageHistory(prevHistory => [
-              ...prevHistory,
-              {
-                id: `audio-transcript-${Date.now()}`,
-                type: 'user', // 统一为user类型
-                content: finalTranscript,
-                timestamp: new Date().toISOString(),
-                isAudioTranscript: true // 标记为音频转录
+      // 会话创建事件  
+      case 'conversation.item.created':
+        // 检查是否是面试官的消息
+        if (message.item && message.item.role === 'assistant') {
+          if (message.item.content && Array.isArray(message.item.content)) {
+            // 处理面试官的文本消息
+            message.item.content.forEach(content => {
+              if (content.type === 'text' && content.text) {
+                setMessageHistory(prevHistory => [
+                  ...prevHistory,
+                  {
+                    id: message.item.id || `assistant-${Date.now()}`,
+                    type: 'assistant',
+                    content: content.text,
+                    timestamp: new Date().toISOString()
+                  }
+                ]);
+                
+                // 同时更新面试官的实时显示文本
+                setInterviewerResponse(content.text);
               }
-            ]);
+            });
           }
-          break;
+        }
+        break;
           
-        // 文本增量响应
-        case 'response.text.delta':
-          if (message.delta) {
-            // 更新AI回复的增量文本
-            setInterviewerResponse(prev => prev + message.delta);
-          }
-          break;
+      // 用户开始说话
+      case 'input_audio_buffer.speech_started':
+        console.log('检测到用户开始说话');
+        setSessionStatus('listening');
+        setIsProcessingResponse(false);
+        break;
           
-        case 'response.text.done':
-          // 处理完整的文本响应
-          if (message.text) {
-            // 添加AI回复到消息历史
-            setMessageHistory(prevHistory => [
-              ...prevHistory,
-              {
-                id: `interviewer-${Date.now()}`,
-                type: 'assistant', // 修改为统一的assistant类型
-                content: message.text,
-                timestamp: new Date().toISOString()
-              }
-            ]);
-            
-            // 清空增量响应缓存
-            setInterviewerResponse('');
-          }
-          break;
-        
-        // 语音相关事件
-        case 'input_audio_buffer.speech_started':
-          console.log('检测到用户开始说话');
-          setSessionStatus('listening');
-          setIsProcessingResponse(false);
-          // 重置转录
-          audioTranscriptRef.current = '';
-          setLiveTranscript('');
+      // 用户停止说话
+      case 'input_audio_buffer.speech_stopped':
+        console.log('检测到用户停止说话');
+        break;
           
-          // 添加一个"正在说话"的指示到历史记录
+      // 面试官开始说话
+      case 'response.speech.started':
+        console.log('面试官开始说话');
+        setSessionStatus('speaking');
+        setIsProcessingResponse(true);
+        break;
+          
+      // 面试官停止说话
+      case 'response.speech.done':
+        console.log('面试官停止说话');
+        setIsProcessingResponse(false);
+        break;
+          
+      // 面试官文本响应的增量部分 - 这是关键的部分
+      case 'response.text.delta':
+        if (message.delta) {
+          // 更新AI回复的增量文本
+          setInterviewerResponse(prev => prev + message.delta);
+        }
+        break;
+          
+      // 面试官文本响应完成
+      case 'response.text.done':
+        // 处理完整的文本响应
+        if (message.text) {
+          // 添加AI回复到消息历史
           setMessageHistory(prevHistory => [
             ...prevHistory,
             {
-              id: `speaking-${Date.now()}`,
-              type: 'user-speaking', // 特殊类型表示用户正在说话
-              content: '正在说话...',
+              id: `interviewer-${Date.now()}`,
+              type: 'assistant',
+              content: message.text,
               timestamp: new Date().toISOString()
             }
           ]);
-          break;
-          
-        case 'input_audio_buffer.speech_stopped':
-          console.log('检测到用户停止说话');
-          // 移除所有"正在说话"的临时消息
-          setMessageHistory(prevHistory => 
-            prevHistory.filter(msg => msg.type !== 'user-speaking')
-          );
-          
-          // 将当前活跃转录添加到完整转录
-          const currentTranscriptText = audioTranscriptRef.current;
-          setCurrentTranscript(currentTranscriptText);
-          
-          // 仅当非空时添加到历史记录
-          if (currentTranscriptText.trim() !== '') {
-            setMessageHistory(prevHistory => [
-              ...prevHistory,
-              {
-                id: `speech-complete-${Date.now()}`,
-                type: 'user', // 统一为user类型
-                content: currentTranscriptText,
-                timestamp: new Date().toISOString(),
-                isFinalTranscript: true // 标记为最终转录
-              }
-            ]);
-          }
-          break;
-          
-        case 'input_audio_buffer.committed':
-          console.log('用户输入已提交');
-          break;
-          
-        // 面试官语音事件
-        case 'response.speech.started':
-          console.log('面试官开始说话');
-          setSessionStatus('speaking');
-          setIsProcessingResponse(true);
-          
-          // 添加一个"面试官正在说话"的指示到历史记录
+        }
+        // 不要清空增量响应，直到响应完全完成
+        break;
+        
+      // 处理面试官音频转录完成事件
+      case 'response.audio_transcript.done':
+        console.log('面试官音频转录完成:', message.transcript);
+        if (message.transcript) {
+          // 添加AI回复到消息历史
           setMessageHistory(prevHistory => [
             ...prevHistory,
             {
-              id: `assistant-speaking-${Date.now()}`,
-              type: 'assistant-speaking', // 特殊类型表示面试官正在说话
-              content: '面试官正在说话...',
+              id: `interviewer-transcript-${Date.now()}`,
+              type: 'assistant',
+              content: message.transcript,
               timestamp: new Date().toISOString()
             }
           ]);
-          break;
           
-        case 'response.speech.done':
-          console.log('面试官停止说话');
-          setIsProcessingResponse(false);
+          // 更新当前显示的面试官回复
+          setInterviewerResponse(message.transcript);
+        }
+        break;
           
-          // 移除所有"面试官正在说话"的临时消息
-          setMessageHistory(prevHistory => 
-            prevHistory.filter(msg => msg.type !== 'assistant-speaking')
-          );
-          break;
+      // 响应完成事件
+      case 'response.done':
+        console.log('响应完成');
+        setIsProcessingResponse(false);
+        // 清除面试官增量文本
+        setInterviewerResponse(''); 
+        break;
           
-        // 响应完成事件
-        case 'response.done':
-          console.log('响应完成');
-          setIsProcessingResponse(false);
-          // 清除面试官增量文本，确保不会显示旧文本
-          setInterviewerResponse(''); 
-          break;
+      // 处理function call相关消息
+      case 'response.function_call':
+        if (message.function && message.function.name) {
+          pendingFunctionCallArgsRef.current[message.function.call_id] = {
+            name: message.function.name,
+            args: ''
+          };
+        }
+        break;
           
-        // 处理function call相关消息
-        case 'response.function_call':
-          if (message.function && message.function.name) {
-            pendingFunctionCallArgsRef.current[message.function.call_id] = {
-              name: message.function.name,
-              args: ''
-            };
+      case 'response.function_call_arguments.delta':
+        if (message.call_id && pendingFunctionCallArgsRef.current[message.call_id]) {
+          if (message.delta) {
+            pendingFunctionCallArgsRef.current[message.call_id].args += message.delta;
           }
-          break;
+        }
+        break;
           
-        case 'response.function_call_arguments.delta':
-          if (message.call_id && pendingFunctionCallArgsRef.current[message.call_id]) {
-            if (message.delta) {
-              pendingFunctionCallArgsRef.current[message.call_id].args += message.delta;
-            }
+      case 'response.function_call_arguments.done':
+        if (message.call_id && pendingFunctionCallArgsRef.current[message.call_id]) {
+          const { name, args } = pendingFunctionCallArgsRef.current[message.call_id];
+          let parameters = {};
+          
+          try {
+            parameters = JSON.parse(args);
+          } catch (e) {
+            console.error('解析函数参数失败:', e);
           }
-          break;
           
-        case 'response.function_call_arguments.done':
-          if (message.call_id && pendingFunctionCallArgsRef.current[message.call_id]) {
-            const { name, args } = pendingFunctionCallArgsRef.current[message.call_id];
-            let parameters = {};
-            
-            try {
-              parameters = JSON.parse(args);
-            } catch (e) {
-              console.error('解析函数参数失败:', e);
-            }
-            
-            // 执行函数回调
-            if (name && functionCallbacksRef.current[name]) {
-              functionCallbacksRef.current[name](parameters);
-            }
-            
-            // 清理
-            delete pendingFunctionCallArgsRef.current[message.call_id];
+          // 执行函数回调
+          if (name && functionCallbacksRef.current[name]) {
+            functionCallbacksRef.current[name](parameters);
           }
-          break;
-        
-        // 处理以下消息类型
-        case 'response.created':
-          console.log('收到响应创建消息:', message);
-          // 这里可以处理响应创建事件，例如：准备UI状态以显示即将到来的响应
-          break;
           
-        case 'rate_limits.updated':
-          console.log('速率限制更新:', message.rate_limits);
-          // 可以处理速率限制信息，例如：显示用户的API使用情况或提醒用户接近限制
-          break;
+          // 清理
+          delete pendingFunctionCallArgsRef.current[message.call_id];
+        }
+        break;
+      
+      // 错误处理
+      case 'invalid_request_error':
+        console.error('请求错误:', message.message);
+        message.error(`请求错误: ${message.message}`);
+        break;
           
-        case 'response.output_item.added':
-          console.log('响应输出项添加:', message);
-          // 处理添加到响应的输出项，可以根据输出类型进行不同处理
-          if (message.item && message.item.type) {
-            switch (message.item.type) {
-              case 'text':
-                // 处理文本输出
-                break;
-              case 'function_call':
-                // 处理函数调用输出
-                break;
-              // 可以添加更多输出类型的处理
-            }
-          }
-          break;
-          
-        case 'response.output_item.done':
-          console.log('响应输出项完成:', message);
-          // 处理输出项完成事件，可以进行UI更新或状态转换
-          break;
-        
-        // 错误处理
-        case 'invalid_request_error':
-          console.error('请求错误:', message.message);
-          message.error(`请求错误: ${message.message}`);
-          break;
-          
-        // 其他类型的消息
-        default:
-          // 记录未处理的消息类型
-          console.log('收到其他类型消息:', message.type, message);
-          break;
-      }
-    } catch (error) {
-      console.error('处理消息失败:', error, message);
+      // 其他类型的消息可以忽略或简单记录
+      default:
+        console.log('收到其他类型消息:', message.type);
+        break;
     }
-  };
+  } catch (error) {
+    console.error('处理消息失败:', error, message);
+  }
+};
 
   // 发送消息到服务器
   const sendToServer = (messageData) => {
@@ -646,7 +505,7 @@ const InterviewSession = () => {
         console.log('应聘者回答结束:', parameters);
         
         // 从currentTranscript获取回答
-        const answer = parameters.answer || currentTranscript || liveTranscript || candidateAudioText || '未能识别回答';
+        const answer = parameters.answer || currentTranscript || candidateAudioText || '未能识别回答';
         
         // 将当前交互添加到列表
         if (currentQuestion) {
@@ -661,7 +520,7 @@ const InterviewSession = () => {
           setInteractions(prev => [...prev, newInteraction]);
           
           // 保存交互记录到服务器
-          saveInteraction('', answer);
+          saveInteraction(currentQuestion.content, answer);
           
           // 准备下一个问题
           const nextIndex = currentQuestionIndex + 1;
@@ -671,8 +530,6 @@ const InterviewSession = () => {
             
             // 清除当前转录
             setCurrentTranscript('');
-            setLiveTranscript('');
-            audioTranscriptRef.current = '';
             setCandidateAudioText(''); // 清除应聘者语音文本
             
             // 清除面试官增量文本，确保不显示旧文本
@@ -693,48 +550,53 @@ const InterviewSession = () => {
   };
 
   // 询问当前问题
-  const askCurrentQuestion = () => {
-    if (!currentQuestion) {
-      console.warn('没有当前问题可问');
-      return;
+ // 询问当前问题
+const askCurrentQuestion = () => {
+  if (!currentQuestion) {
+    console.warn('没有当前问题可问');
+    return;
+  }
+  
+  // 更新状态
+  setSessionStatus('speaking');
+  setIsProcessingResponse(true);
+  
+  // 将问题添加到消息历史
+  const questionId = `question-${Date.now()}`;
+  setMessageHistory(prevHistory => [
+    ...prevHistory,
+    {
+      id: questionId,
+      type: 'assistant', // 注意：问题是面试官(AI)提出的，所以是assistant类型
+      content: currentQuestion.content,
+      timestamp: new Date().toISOString(),
+      isQuestion: true // 标记为问题
     }
-    
-    // 更新状态
-    setSessionStatus('speaking');
-    
-    // 将问题添加到消息历史
-    setMessageHistory(prevHistory => [
-      ...prevHistory,
-      {
-        id: `question-${Date.now()}`,
-        type: 'user', 
-        content: currentQuestion.content,
-        timestamp: new Date().toISOString(),
-        isQuestion: true // 标记为问题
-      }
-    ]);
+  ]);
 
-    // 发送问题到AI面试官
-    const messageData = {
-      type: 'text',
-      text: currentQuestion.content
-    };
-
-    if (!sendToServer(messageData)) {
-      message.error('发送问题失败');
-      setSessionStatus('ready');
-    }
+  // 发送问题到AI面试官 - 使用 system 消息指定角色信息
+  const messageData = {
+    type: 'text',
+    text: `你是面试官，正在进行一场面试。请询问候选人以下问题：${currentQuestion.content}`,
+    role: 'system'
   };
 
+  if (!sendToServer(messageData)) {
+    message.error('发送问题失败');
+    setSessionStatus('ready');
+    setIsProcessingResponse(false);
+  }
+};
   // 保存交互记录
   const saveInteraction = (question, answer) => {
     if (!sessionId) return;
 
-    interviewAPI.saveInteraction(sessionId, {
-      questionId: currentQuestion?.id,
-      question: question || currentQuestion?.content || '',
-      answer: answer || currentTranscript || liveTranscript || candidateAudioText || '',
-      createDate: new Date().toISOString()
+    interviewAPI.saveInteraction({
+      SessionId: sessionId,
+      QuestionId: currentQuestion?.id,
+      Question: question || currentQuestion?.content || '',
+      Answer: answer || '',
+      CreateDate: new Date().toISOString()
     }).catch(error => {
       console.error('保存交互记录失败:', error);
     });
@@ -752,13 +614,13 @@ const InterviewSession = () => {
       
       // 更新会话状态为已结束
       if (sessionId) {
-        await interviewAPI.endInterview(sessionId);
+        await interviewAPI.endSession(sessionId);
         setSessionStatus('ended');
         setSessionEnded(true);
         message.success('面试已结束');
         
         // 导航到结果页面或显示结果
-        navigate(`/interview/results/${sessionId}`, {
+        navigate(`/interview/session-result/${sessionId}`, {
           state: {
             scenarioInfo,
             sessionInfo,
@@ -807,12 +669,6 @@ const InterviewSession = () => {
         mediaStreamRef.current = null;
       }
       
-      // 停止语音识别
-      if (window.speechRecognition) {
-        window.speechRecognition.stop();
-        delete window.speechRecognition;
-      }
-      
       // 停止音频播放
       if (audioElementRef.current) {
         audioElementRef.current.pause();
@@ -847,25 +703,33 @@ const InterviewSession = () => {
       
       // 如果location.state中没有数据，则从API获取
       if (!initialSessionInfo) {
-        const sessionData = await interviewAPI.getInterviewSession(sessionId);
-        setSessionInfo(sessionData);
-        setScenarioInfo(sessionData.scenario);
+        const sessionData = await interviewAPI.getSessionDetail(sessionId);
         
-        // 获取问题列表
-        const questionsData = await interviewAPI.getInterviewQuestions(sessionId);
-        setQuestions(questionsData);
-        
-        // 获取已有交互记录
-        const interactionsData = await interviewAPI.getSessionInteractions(sessionId);
-        setInteractions(interactionsData);
-        
-        // 设置当前问题
-        if (questionsData.length > 0) {
-          const lastAnsweredIndex = interactionsData.length;
-          if (lastAnsweredIndex < questionsData.length) {
-            setCurrentQuestion(questionsData[lastAnsweredIndex]);
-            setCurrentQuestionIndex(lastAnsweredIndex);
+        if (sessionData.code === 200) {
+          setSessionInfo(sessionData.data);
+          setScenarioInfo(sessionData.data.scenario);
+          
+          // 获取问题列表
+          const questionsData = await interviewAPI.getQuestionsList(
+            sessionData.data.scenarioId, 
+            sessionData.data.jobPositionId
+          );
+          
+          if (questionsData.code === 200) {
+            setQuestions(questionsData.data.items || []);
           }
+          
+          // 设置当前问题
+          if (questionsData.data.items && questionsData.data.items.length > 0) {
+            setCurrentQuestion(questionsData.data.items[0]);
+          }
+        } else {
+          throw new Error(sessionData.message || '获取会话数据失败');
+        }
+      } else {
+        // 如果有初始问题数据，设置当前问题
+        if (initialQuestions.length > 0) {
+          setCurrentQuestion(initialQuestions[0]);
         }
       }
       
@@ -900,7 +764,7 @@ const InterviewSession = () => {
     if (messageEndRef.current) {
       messageEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messageHistory, interviewerResponse, liveTranscript]);
+  }, [messageHistory, interviewerResponse]);
 
   // 渲染状态指示器
   const renderStatusIndicator = () => {
@@ -950,7 +814,9 @@ const InterviewSession = () => {
   const renderMessageItem = (message) => {
     const isUser = message.type === 'user';
     const isAssistant = message.type === 'assistant';
-    const isSystem = message.isSystemTranscript || message.isAudioTranscript;
+    
+    // 确保我们始终有正确的类型
+    const actualType = isUser ? 'user' : 'assistant';
     
     return (
       <div
@@ -979,47 +845,70 @@ const InterviewSession = () => {
             border: isUser ? '1px solid #91d5ff' : '1px solid #d3adf7'
           }}
         >
-          {isSystem && (
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              <InfoCircleOutlined /> 系统转录
-            </Text>
+          {message.isQuestion && (
+            <Tag color="blue" style={{ marginBottom: 4 }}>问题</Tag>
           )}
-          <Paragraph style={{ marginBottom: 0 }}>
+          <Paragraph style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>
             {message.content}
           </Paragraph>
           <Text type="secondary" style={{ fontSize: 12 }}>
-            {new Date(message.timestamp).toLocaleTimeString()}
+            {actualType === 'user' ? '您' : '面试官'} · {new Date(message.timestamp).toLocaleTimeString()}
           </Text>
         </div>
       </div>
     );
   };
 
-  // 渲染实时转录
-  const renderLiveTranscript = () => {
-    if (!liveTranscript && !interviewerResponse) return null;
-    
-    return (
-      <div style={{ marginTop: 16 }}>
-        {liveTranscript && (
-          <div style={{ marginBottom: 8 }}>
-            <Text strong>实时转录:</Text>
-            <Paragraph style={{ marginLeft: 8 }}>
-              {liveTranscript}
-            </Paragraph>
-          </div>
-        )}
-        {interviewerResponse && (
-          <div>
-            <Text strong>面试官回复:</Text>
-            <Paragraph style={{ marginLeft: 8 }}>
-              {interviewerResponse}
-            </Paragraph>
-          </div>
-        )}
+  // 渲染面试官实时响应
+  // 渲染面试官实时响应
+const renderInterviewerResponse = () => {
+  if (!interviewerResponse) return null;
+  
+  return (
+    <div
+      style={{
+        display: 'flex',
+        marginBottom: 16,
+        alignItems: 'flex-start'
+      }}
+    >
+      <Avatar
+        icon={<RobotOutlined />}
+        style={{
+          backgroundColor: '#722ed1',
+          marginRight: 12
+        }}
+      />
+      <div
+        style={{
+          maxWidth: '70%',
+          borderRadius: 4,
+          padding: '8px 12px',
+          backgroundColor: '#f9f0ff',
+          border: '1px solid #d3adf7'
+        }}
+      >
+        <Paragraph style={{ marginBottom: 0, whiteSpace: 'pre-wrap' }}>
+          {interviewerResponse}
+          {isProcessingResponse && (
+            <span style={{ 
+              display: 'inline-block', 
+              width: '2px', 
+              height: '16px', 
+              backgroundColor: '#722ed1', 
+              animation: 'blink 1s infinite', 
+              marginLeft: 2,
+              verticalAlign: 'middle'
+            }}></span>
+          )}
+        </Paragraph>
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          面试官 · {isProcessingResponse ? '正在回复...' : '已回复'}
+        </Text>
       </div>
-    );
-  };
+    </div>
+  );
+};
 
   // 渲染面试问题进度
   const renderQuestionProgress = () => {
@@ -1028,168 +917,187 @@ const InterviewSession = () => {
     const progressPercent = ((currentQuestionIndex) / questions.length) * 100;
     
     return (
-      <div style={{ marginBottom: 16 }}>
-        <Text strong>
-          问题 {currentQuestionIndex + 1}/{questions.length}
-        </Text>
-        <Progress percent={progressPercent} showInfo={false} />
-      </div>
-    );
-  };
+      <div style={{ marginBottom: 16 }}><Text strong>
+      问题 {currentQuestionIndex + 1}/{questions.length}
+    </Text>
+    <Progress percent={progressPercent} showInfo={false} />
+  </div>
+);
+};
 
-  // 渲染面试结束结果
-  const renderSessionEnded = () => {
-    return (
-      <Result
-        status="success"
-        title="面试已完成"
-        subTitle="感谢您的参与，面试结果将很快生成"
-        extra={[
+// 渲染面试结束结果
+const renderSessionEnded = () => {
+return (
+  <Result
+    status="success"
+    title="面试已完成"
+    subTitle="感谢您的参与，面试结果将很快生成"
+    extra={[
+      <Button
+        type="primary"
+        key="result"
+        onClick={() => navigate(`/interview/session-result/${sessionId}`)}
+      >
+        查看面试结果
+      </Button>,
+      <Button
+        key="return"
+        onClick={() => navigate('/interview')}
+      >
+        返回首页
+      </Button>
+    ]}
+  />
+);
+};
+
+// 渲染错误状态
+const renderErrorState = () => {
+return (
+  <Result
+    status="error"
+    title="连接失败"
+    subTitle="无法连接到面试服务器，请检查网络连接后重试"
+    extra={[
+      <Button
+        type="primary"
+        key="retry"
+        onClick={() => setupRtcConnection(sessionInfo?.token)}
+      >
+        重新连接
+      </Button>,
+      <Button
+        key="return"
+        onClick={() => navigate('/interview')}
+      >
+        返回首页
+      </Button>
+    ]}
+  />
+);
+};
+
+// 主渲染
+if (loading) {
+return (
+  <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+    <Spin size="large" tip="加载面试数据..." />
+  </div>
+);
+}
+
+if (sessionEnded) {
+return renderSessionEnded();
+}
+
+if (sessionStatus === 'error') {
+return renderErrorState();
+}
+
+return (
+<div style={{ padding: 24 }}>
+  <Card
+    title={
+      <Space>
+        <Title level={4} style={{ margin: 0 }}>
+          {scenarioInfo?.name || '面试会话'}
+        </Title>
+        {renderStatusIndicator()}
+      </Space>
+    }
+    extra={
+      <Space>
+        <Button
+          icon={micEnabled ? <AudioOutlined /> : <AudioMutedOutlined />}
+          onClick={toggleMic}
+        >
+          {micEnabled ? '麦克风开启' : '麦克风静音'}
+        </Button>
+        <Popconfirm
+          title="确定要结束面试吗?"
+          description="结束后将无法继续当前面试"
+          onConfirm={handleEndInterview}
+          okText="结束"
+          cancelText="取消"
+          icon={<QuestionCircleOutlined style={{ color: 'red' }} />}
+        >
           <Button
             type="primary"
-            key="result"
-            onClick={() => navigate(`/interview/results/${sessionId}`)}
+            danger
+            icon={<CloseCircleOutlined />}
+            loading={endingSession}
           >
-            查看面试结果
-          </Button>,
-          <Button
-            key="return"
-            onClick={() => navigate('/dashboard')}
-          >
-            返回首页
+            结束面试
           </Button>
-        ]}
+        </Popconfirm>
+      </Space>
+    }
+  >
+    {renderQuestionProgress()}
+    
+    <Divider orientation="left">面试对话</Divider>
+    
+    <div
+      style={{
+        height: 'calc(100vh - 400px)',
+        overflowY: 'auto',
+        padding: '0 16px',
+        marginBottom: 16
+      }}
+    >
+      <List
+        dataSource={messageHistory}
+        renderItem={renderMessageItem}
+        locale={{ emptyText: '暂无对话记录' }}
       />
-    );
-  };
-
-  // 渲染错误状态
-  const renderErrorState = () => {
-    return (
-      <Result
-        status="error"
-        title="连接失败"
-        subTitle="无法连接到面试服务器，请检查网络连接后重试"
-        extra={[
-          <Button
-            type="primary"
-            key="retry"
-            onClick={() => setupRtcConnection(sessionInfo?.token)}
-          >
-            重新连接
-          </Button>,
-          <Button
-            key="return"
-            onClick={() => navigate('/dashboard')}
-          >
-            返回首页
-          </Button>
-        ]}
-      />
-    );
-  };
-
-  // 主渲染
-  if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
-        <Spin size="large" tip="加载面试数据..." />
-      </div>
-    );
-  }
-
-  if (sessionEnded) {
-    return renderSessionEnded();
-  }
-
-  if (sessionStatus === 'error') {
-    return renderErrorState();
-  }
-
-  return (
-    <div style={{ padding: 24 }}>
+      {interviewerResponse && renderInterviewerResponse()}
+      <div ref={messageEndRef} />
+    </div>
+    
+    <Divider orientation="left">当前问题</Divider>
+    
+    {currentQuestion ? (
       <Card
-        title={
-          <Space>
-            <Title level={4} style={{ margin: 0 }}>
-              {scenarioInfo?.name || '面试会话'}
-            </Title>
-            {renderStatusIndicator()}
-          </Space>
-        }
+        type="inner"
+        title={`问题 ${currentQuestionIndex + 1}`}
         extra={
-          <Space>
-            <Button
-              icon={micEnabled ? <AudioOutlined /> : <AudioMutedOutlined />}
-              onClick={toggleMic}
-            >
-              {micEnabled ? '麦克风开启' : '麦克风静音'}
-            </Button>
-            <Popconfirm
-              title="确定要结束面试吗?"
-              description="结束后将无法继续当前面试"
-              onConfirm={confirmEndInterview}
-              okText="结束"
-              cancelText="取消"
-              icon={<QuestionCircleOutlined style={{ color: 'red' }} />}
-            >
-              <Button
-                type="primary"
-                danger
-                icon={<CloseCircleOutlined />}
-                loading={endingSession}
-              >
-                结束面试
-              </Button>
-            </Popconfirm>
-          </Space>
+          <Tag color="blue">
+            {currentQuestion.category || '通用问题'}
+          </Tag>
         }
       >
-        {renderQuestionProgress()}
-        
-        <Divider orientation="left">面试对话</Divider>
-        
-        <div
-          style={{
-            height: 'calc(100vh - 400px)',
-            overflowY: 'auto',
-            padding: '0 16px',
-            marginBottom: 16
-          }}
-        >
-          <List
-            dataSource={messageHistory}
-            renderItem={renderMessageItem}
-            locale={{ emptyText: '暂无对话记录' }}
-          />
-          {renderLiveTranscript()}
-          <div ref={messageEndRef} />
-        </div>
-        
-        <Divider orientation="left">当前问题</Divider>
-        
-        {currentQuestion ? (
-          <Card
-            type="inner"
-            title={`问题 ${currentQuestionIndex + 1}`}
-            extra={
-              <Tag color="blue">
-                {currentQuestion.category || '通用问题'}
-              </Tag>
-            }
-          >
-            <Paragraph style={{ fontSize: 16 }}>
-              {currentQuestion.content}
-            </Paragraph>
-          </Card>
-        ) : (
-          <Paragraph type="secondary" style={{ textAlign: 'center' }}>
-            暂无当前问题
+        <Paragraph style={{ fontSize: 16 }}>
+          {currentQuestion.content}
+        </Paragraph>
+      </Card>
+    ) : (
+      <Paragraph type="secondary" style={{ textAlign: 'center' }}>
+        暂无当前问题
+      </Paragraph>
+    )}
+    
+    {sessionStatus === 'listening' && (
+      <div style={{ 
+        marginTop: 16, 
+        padding: '12px 16px', 
+        background: '#f6ffed', 
+        border: '1px solid #b7eb8f',
+        borderRadius: 4
+      }}>
+        <Space>
+          <SoundOutlined style={{ color: '#52c41a' }} />
+          <Text strong>正在聆听您的回答...</Text>
+        </Space>
+        {candidateAudioText && (
+          <Paragraph style={{ marginTop: 8, color: '#555' }}>
+            当前识别: {candidateAudioText}
           </Paragraph>
         )}
-      </Card>
-    </div>
-  );
+      </div>
+    )}
+  </Card>
+</div>
+);
 };
 
 export default InterviewSession;
